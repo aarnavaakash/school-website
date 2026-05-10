@@ -24,6 +24,25 @@ mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.log(err));
 
+const bcrypt = require("bcryptjs");
+const User = require("./models/User");
+
+app.get("/seed-admin", async (req, res) => {
+  const exists = await User.findOne({ email: "admin@hnp.edu" });
+  if (exists) return res.send("Admin already exists");
+
+  const hashedPassword = await bcrypt.hash("admin123", 10);
+
+  await User.create({
+    name: "Admin",
+    email: "admin@hnp.edu",
+    password: hashedPassword,
+    role: "admin"
+  });
+
+  res.send("Admin created successfully");
+});
+
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/students', require('./routes/studentRoutes'));
