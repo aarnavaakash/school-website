@@ -16,6 +16,10 @@ app.get("/", (req, res) => {
   res.send("HNP Institute Backend Running Successfully");
 });
 
+app.get("/ping", (req, res) => {
+  res.status(200).send("pong");
+});
+
 // Middleware
 app.use(cors({
   origin: allowedOrigins,
