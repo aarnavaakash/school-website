@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from '../../api/axios';
+import { assetUrl } from '../../config/api';
 import { motion } from 'framer-motion';
 import { Users, FileText, Image as ImageIcon, MessageSquare, Plus, Trash2, Edit2, Eye, X, BookOpen, Search, UserPlus } from 'lucide-react';
 
@@ -110,7 +111,7 @@ const AdminDashboard = () => {
     let photoFile = null;
     if (admission.photo) {
       try {
-        const response = await fetch(`http://localhost:5001${admission.photo}`);
+        const response = await fetch(assetUrl(admission.photo));
         const blob = await response.blob();
         const filename = admission.photo.split('/').pop();
         photoFile = new File([blob], filename, { type: blob.type });
@@ -422,7 +423,7 @@ const AdminDashboard = () => {
                       <div className="flex items-center">
                         {(item.photo || item.image) && (
                           <div className="flex-shrink-0 h-10 w-10 mr-4">
-                            <img className="h-10 w-10 rounded-full object-cover border border-slate-200" src={`http://localhost:5001${item.photo || item.image}`} alt="Avatar" />
+                            <img className="h-10 w-10 rounded-full object-cover border border-slate-200" src={assetUrl(item.photo || item.image)} alt="Avatar" />
                           </div>
                         )}
                         <div>

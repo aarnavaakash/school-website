@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from '../api/axios';
+import { assetUrl } from '../config/api';
 import { motion } from 'framer-motion';
 
 const Faculty = () => {
@@ -47,7 +48,7 @@ const Faculty = () => {
               >
                 <div className="h-48 bg-slate-200 w-full">
                   <img 
-                    src={teacher.photo ? (teacher.photo.startsWith('/uploads') ? `http://localhost:5001${teacher.photo}` : teacher.photo) : 'https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80'} 
+                    src={teacher.photo ? assetUrl(teacher.photo) : 'https://images.unsplash.com/photo-1544717305-2782549b5136?ixlib=rb-1.2.1&auto=format&fit=crop&w=600&q=80'} 
                     alt={teacher.name}
                     className="w-full h-full object-cover"
                   />

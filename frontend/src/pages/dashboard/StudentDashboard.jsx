@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from '../../api/axios';
+import { assetUrl } from '../../config/api';
 import { motion } from 'framer-motion';
 import { User, Book, ClipboardList, LogOut, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -68,7 +69,7 @@ const StudentDashboard = () => {
           >
             <div className="text-center mb-6">
                 {profile.photo ? (
-                    <img src={`http://localhost:5001${profile.photo}`} alt={profile.name} className="w-24 h-24 rounded-full object-cover mx-auto mb-4 shadow-md" />
+                    <img src={assetUrl(profile.photo)} alt={profile.name} className="w-24 h-24 rounded-full object-cover mx-auto mb-4 shadow-md" />
                 ) : (
                     <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                         <User className="w-12 h-12 text-blue-600" />

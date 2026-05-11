@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from '../api/axios';
+import { assetUrl } from '../config/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Gallery = () => {
@@ -69,7 +70,7 @@ const Gallery = () => {
                       <span className="font-bold">PDF Document</span>
                     </div>
                   ) : (
-                    <img src={img.imageUrl ? (img.imageUrl.startsWith('/uploads') ? `http://localhost:5001${img.imageUrl}` : img.imageUrl) : ''} alt={img.title} className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <img src={assetUrl(img.imageUrl)} alt={img.title} className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110" />
                   )}
                   <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
                     <div className="text-white">
@@ -90,9 +91,9 @@ const Gallery = () => {
              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
           {selectedImage.imageUrl && selectedImage.imageUrl.toLowerCase().endsWith('.pdf') ? (
-             <iframe src={selectedImage.imageUrl.startsWith('/uploads') ? `http://localhost:5001${selectedImage.imageUrl}` : selectedImage.imageUrl} className="w-full h-full max-w-4xl max-h-[80vh] bg-white rounded-lg shadow-2xl" title={selectedImage.title}></iframe>
+             <iframe src={assetUrl(selectedImage.imageUrl)} className="w-full h-full max-w-4xl max-h-[80vh] bg-white rounded-lg shadow-2xl" title={selectedImage.title}></iframe>
           ) : (
-             <img src={selectedImage.imageUrl ? (selectedImage.imageUrl.startsWith('/uploads') ? `http://localhost:5001${selectedImage.imageUrl}` : selectedImage.imageUrl) : ''} alt={selectedImage.title} className="max-w-full max-h-full rounded-lg shadow-2xl" />
+             <img src={assetUrl(selectedImage.imageUrl)} alt={selectedImage.title} className="max-w-full max-h-full rounded-lg shadow-2xl" />
           )}
         </div>
       )}

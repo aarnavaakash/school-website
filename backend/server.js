@@ -6,6 +6,11 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const app = express();
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://hnp-school.vercel.app",
+  ...(process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',').map(origin => origin.trim()) : [])
+].filter(Boolean);
 
 app.get("/", (req, res) => {
   res.send("HNP Institute Backend Running Successfully");
@@ -13,10 +18,7 @@ app.get("/", (req, res) => {
 
 // Middleware
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://hnp-school.vercel.app"
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
