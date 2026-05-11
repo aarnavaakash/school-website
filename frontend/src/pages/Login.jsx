@@ -122,11 +122,6 @@ const Login = () => {
             </button>
           </div>
         </form>
-        <div className="mt-4 text-center">
-            <p className="text-xs text-gray-500">Seed credentials for testing:</p>
-            <p className="text-xs text-gray-500">Admin: admin@hnp.edu / admin123</p>
-            <p className="text-xs text-gray-500">Student: john@student.hnp.edu / student123</p>
-        </div>
       </motion.div>
     </div>
   );
