@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAdmissions, createAdmission, deleteAdmission } = require('../controllers/admissionController');
+const { getAdmissions, createAdmission, enrollAdmission, deleteAdmission } = require('../controllers/admissionController');
 const { protect, admin } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
 
@@ -10,5 +10,7 @@ router.route('/')
 
 router.route('/:id')
   .delete(protect, admin, deleteAdmission);
+
+router.post('/:id/enroll', protect, admin, enrollAdmission);
 
 module.exports = router;

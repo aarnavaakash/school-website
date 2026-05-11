@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from '../../api/axios';
 import { assetUrl } from '../../config/api';
 import { motion } from 'framer-motion';
-import { Users, FileText, Image as ImageIcon, MessageSquare, Plus, Trash2, Edit2, Eye, X, BookOpen, Search, UserPlus } from 'lucide-react';
+import { ArrowLeft, Award, Calendar, Mail, MapPin, Phone, Users, FileText, Image as ImageIcon, MessageSquare, Plus, Trash2, Edit2, Eye, X, BookOpen, Search, UserPlus } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('notices');
@@ -12,6 +12,9 @@ const AdminDashboard = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewItem, setViewItem] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [actionMessage, setActionMessage] = useState('');
+  const [showStudentForm, setShowStudentForm] = useState(false);
   const [selectedClassFilter, setSelectedClassFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -89,12 +92,18 @@ const AdminDashboard = () => {
     setNewItem({});
     setIsEditing(false);
     setEditingId(null);
+    setViewItem(null);
+    setSelectedStudent(null);
+    setShowStudentForm(false);
+    setActionMessage('');
   };
 
   const handleEdit = (item) => {
     setIsEditing(true);
     setEditingId(item._id);
     setNewItem(item);
+    setSelectedStudent(null);
+    if (activeTab === 'students') setShowStudentForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -102,48 +111,27 @@ const AdminDashboard = () => {
     setIsEditing(false);
     setEditingId(null);
     setNewItem({});
+    if (activeTab === 'students') setShowStudentForm(false);
+  };
+
+  const openStudentForm = () => {
+    setNewItem({});
+    setIsEditing(false);
+    setEditingId(null);
+    setSelectedStudent(null);
+    setShowStudentForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAcceptAdmission = async (admission) => {
-    setActiveTab('students');
-    setIsEditing(false);
-    
-    let photoFile = null;
-    if (admission.photo) {
-      try {
-        const response = await fetch(assetUrl(admission.photo));
-        const blob = await response.blob();
-        const filename = admission.photo.split('/').pop();
-        photoFile = new File([blob], filename, { type: blob.type });
-      } catch (err) {
-        console.error("Failed to load photo", err);
-      }
+    setActionMessage('');
+    try {
+      await axios.post(`/admissions/${admission._id}/enroll`);
+      setActionMessage(`${admission.studentName} has been enrolled as a student. Default login password: student123`);
+      fetchData('admissions');
+    } catch (error) {
+      setActionMessage(error.response?.data?.message || 'Unable to enroll student. Please try again.');
     }
-
-    setNewItem({
-      name: admission.studentName,
-      class: admission.classApplying,
-      parentName: admission.parentName,
-      phone: admission.phone,
-      email: admission.email,
-      address: admission.address,
-      dateOfBirth: admission.dateOfBirth,
-      photo: admission.photo,
-      photoFile: photoFile,
-      rollNumber: Math.floor(Math.random() * 10000) + 1,
-      admissionDate: new Date().toISOString().split('T')[0]
-    });
-    
-    setTimeout(() => {
-      const fileInput = document.getElementById('studentPhotoInput');
-      if (fileInput && photoFile) {
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(photoFile);
-        fileInput.files = dataTransfer.files;
-      }
-    }, 100);
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id) => {
@@ -206,6 +194,7 @@ const AdminDashboard = () => {
       setNewItem({});
       setIsEditing(false);
       setEditingId(null);
+      if (activeTab === 'students') setShowStudentForm(false);
       fetchData(activeTab);
     } catch (error) {
       console.error(error);
@@ -215,6 +204,29 @@ const AdminDashboard = () => {
   const openMarksModal = (student) => {
     setMarksModalStudent(student);
     setMarksData(student.marks && student.marks.length > 0 ? [...student.marks] : []);
+  };
+
+  const openStudentRecord = (student) => {
+    setSelectedStudent(student);
+    setViewItem(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const closeStudentRecord = () => {
+    setSelectedStudent(null);
+  };
+
+  const getAcademicSummary = (student) => {
+    const marks = student?.marks || [];
+    const totalScore = marks.reduce((sum, mark) => sum + Number(mark.score || 0), 0);
+    const totalMax = marks.reduce((sum, mark) => sum + Number(mark.maxScore || 0), 0);
+    const percentage = totalMax > 0 ? ((totalScore / totalMax) * 100).toFixed(1) : null;
+    return { marks, totalScore, totalMax, percentage };
+  };
+
+  const formatDate = (value) => {
+    if (!value) return 'Not available';
+    return new Date(value).toLocaleDateString();
   };
 
   const closeMarksModal = () => {
@@ -260,10 +272,13 @@ const AdminDashboard = () => {
         else resultStr = 'Pass';
       }
 
-      await axios.put(`/students/${marksModalStudent._id}`, { 
+      const response = await axios.put(`/students/${marksModalStudent._id}`, { 
         marks: marksData,
         result: resultStr 
       });
+      if (selectedStudent?._id === marksModalStudent._id) {
+        setSelectedStudent(response.data);
+      }
       fetchData('students');
       closeMarksModal();
     } catch (error) {
@@ -302,11 +317,145 @@ const AdminDashboard = () => {
       {/* Main Content */}
       <div className="flex-1 p-8 overflow-y-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 capitalize">{activeTab} Management</h1>
+          <h1 className="text-3xl font-bold text-slate-800 capitalize">
+            {selectedStudent ? 'Student Record' : `${activeTab} Management`}
+          </h1>
         </div>
 
+        {actionMessage && (
+          <div className={`mb-6 rounded-lg border px-4 py-3 text-sm ${actionMessage.includes('Unable') ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}>
+            {actionMessage}
+          </div>
+        )}
+
+        {selectedStudent && (
+          <div className="space-y-6">
+            <button
+              onClick={closeStudentRecord}
+              className="inline-flex items-center text-sm font-semibold text-slate-600 hover:text-blue-600"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" /> Back to Students
+            </button>
+
+            <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div className="flex items-center gap-5">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
+                    {selectedStudent.photo ? (
+                      <img src={assetUrl(selectedStudent.photo)} alt={selectedStudent.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-blue-600 bg-blue-50">
+                        <Users className="w-9 h-9" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">{selectedStudent.name}</h2>
+                    <p className="text-sm text-slate-500 mt-1">Class {selectedStudent.class} • Roll {selectedStudent.rollNumber}</p>
+                    <p className="text-xs text-slate-400 mt-1">Student login: {selectedStudent.email} / student123</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => openMarksModal(selectedStudent)}
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" /> Manage Marks
+                  </button>
+                  <button
+                    onClick={() => handleEdit(selectedStudent)}
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200"
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" /> Edit Profile
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Student Details</h3>
+                  {[
+                    { icon: Mail, label: 'Email', value: selectedStudent.email },
+                    { icon: Phone, label: 'Phone', value: selectedStudent.phone },
+                    { icon: Users, label: 'Parent', value: selectedStudent.parentName },
+                    { icon: MapPin, label: 'Address', value: selectedStudent.address },
+                    { icon: Calendar, label: 'Date of Birth', value: formatDate(selectedStudent.dateOfBirth) },
+                    { icon: Calendar, label: 'Admission Date', value: formatDate(selectedStudent.admissionDate) }
+                  ].map((field) => (
+                    <div key={field.label} className="flex gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3">
+                      <field.icon className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{field.label}</p>
+                        <p className="text-sm text-slate-900 break-words">{field.value || 'Not available'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="lg:col-span-2 space-y-6">
+                  {(() => {
+                    const summary = getAcademicSummary(selectedStudent);
+                    return (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="rounded-lg border border-slate-200 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attendance</p>
+                            <p className="mt-2 text-2xl font-bold text-slate-900">{selectedStudent.attendance || 0}%</p>
+                          </div>
+                          <div className="rounded-lg border border-slate-200 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Result</p>
+                            <p className="mt-2 text-2xl font-bold text-slate-900">{selectedStudent.result || 'Pending'}</p>
+                          </div>
+                          <div className="rounded-lg border border-slate-200 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Percentage</p>
+                            <p className="mt-2 text-2xl font-bold text-slate-900">{summary.percentage ? `${summary.percentage}%` : 'N/A'}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-bold uppercase tracking-wide text-slate-500">Academic History</h3>
+                            <div className="inline-flex items-center text-sm text-slate-600">
+                              <Award className="w-4 h-4 mr-2 text-blue-600" />
+                              {summary.totalMax > 0 ? `${summary.totalScore}/${summary.totalMax}` : 'No marks recorded'}
+                            </div>
+                          </div>
+                          <div className="overflow-hidden rounded-lg border border-slate-200">
+                            <table className="min-w-full divide-y divide-slate-200">
+                              <thead className="bg-slate-50">
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Subject</th>
+                                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Score</th>
+                                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Max</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 bg-white">
+                                {summary.marks.length > 0 ? summary.marks.map((mark, index) => (
+                                  <tr key={`${mark.subject}-${index}`}>
+                                    <td className="px-4 py-3 text-sm font-medium text-slate-900">{mark.subject}</td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 text-right">{mark.score}</td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 text-right">{mark.maxScore}</td>
+                                  </tr>
+                                )) : (
+                                  <tr>
+                                    <td colSpan="3" className="px-4 py-8 text-center text-sm text-slate-500">No academic marks have been added yet.</td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Add New Form (simplified for Notices, Teachers, Gallery, Students) */}
-        {['notices', 'teachers', 'gallery', 'students'].includes(activeTab) && (
+        {!selectedStudent && ['notices', 'teachers', 'gallery'].includes(activeTab) && (
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
             <h3 className="text-lg font-bold mb-4 flex items-center">
               {isEditing ? <Edit2 className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />} 
@@ -372,11 +521,52 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {!selectedStudent && activeTab === 'students' && showStudentForm && (
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold flex items-center">
+                {isEditing ? <Edit2 className="w-5 h-5 mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+                {isEditing ? 'Edit Student' : 'Add New Student'}
+              </h3>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="inline-flex items-center text-sm font-semibold text-slate-500 hover:text-slate-800"
+              >
+                <X className="w-4 h-4 mr-1" /> Close
+              </button>
+            </div>
+            <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <input required placeholder="Student Name" className="border p-2 rounded" onChange={e => setNewItem({...newItem, name: e.target.value})} value={newItem.name || ''} />
+              <input required placeholder="Class" className="border p-2 rounded" onChange={e => setNewItem({...newItem, class: e.target.value})} value={newItem.class || ''} />
+              <input required placeholder="Roll Number" className="border p-2 rounded" onChange={e => setNewItem({...newItem, rollNumber: e.target.value})} value={newItem.rollNumber || ''} />
+              <input required placeholder="Parent Name" className="border p-2 rounded" onChange={e => setNewItem({...newItem, parentName: e.target.value})} value={newItem.parentName || ''} />
+              <input required placeholder="Phone" className="border p-2 rounded" onChange={e => setNewItem({...newItem, phone: e.target.value})} value={newItem.phone || ''} />
+              <input required type="email" placeholder="Email (used for login)" className="border p-2 rounded" onChange={e => setNewItem({...newItem, email: e.target.value})} value={newItem.email || ''} />
+              <input required type="date" className="border p-2 rounded text-gray-500" onChange={e => setNewItem({...newItem, dateOfBirth: e.target.value})} value={newItem.dateOfBirth ? new Date(newItem.dateOfBirth).toISOString().split('T')[0] : ''} title="Date of Birth" />
+              <input required type="date" className="border p-2 rounded text-gray-500" onChange={e => setNewItem({...newItem, admissionDate: e.target.value})} value={newItem.admissionDate ? new Date(newItem.admissionDate).toISOString().split('T')[0] : ''} title="Admission Date" />
+              <input required placeholder="Address" className="border p-2 rounded col-span-1 md:col-span-2" onChange={e => setNewItem({...newItem, address: e.target.value})} value={newItem.address || ''} />
+              <div className="col-span-1 md:col-span-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Student Photo (Optional)</label>
+                <input id="studentPhotoInput" type="file" accept="image/*" className="border p-2 rounded w-full" onChange={e => setNewItem({...newItem, photoFile: e.target.files[0]})} />
+              </div>
+              <div className="col-span-1 md:col-span-4 flex gap-2">
+                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-bold">
+                  {isEditing ? 'Update Student' : 'Save Student'}
+                </button>
+                <button type="button" onClick={cancelEdit} className="bg-slate-200 text-slate-800 px-4 py-2 rounded hover:bg-slate-300 font-bold">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* Data Table */}
-        {activeTab === 'students' && (
+        {!selectedStudent && activeTab === 'students' && (
           <div className="mb-6 space-y-4">
-            <div className="flex items-center">
-              <div className="relative w-full md:w-1/3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="relative w-full sm:max-w-sm">
                 <input 
                   type="text" 
                   placeholder="Search student name..." 
@@ -386,6 +576,13 @@ const AdminDashboard = () => {
                 />
                 <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
               </div>
+              <button
+                type="button"
+                onClick={openStudentForm}
+                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4 mr-2" /> ADD NEW
+              </button>
             </div>
             
             <div className="flex flex-col gap-3">
@@ -405,7 +602,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        {!selectedStudent && <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-slate-500">Loading...</div>
           ) : (
@@ -438,7 +635,7 @@ const AdminDashboard = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       {['admissions', 'contacts', 'students'].includes(activeTab) && (
-                        <button onClick={() => setViewItem(item)} className="text-emerald-600 hover:text-emerald-900 p-2 mr-2" title="View Details">
+                        <button onClick={() => activeTab === 'students' ? openStudentRecord(item) : setViewItem(item)} className="text-emerald-600 hover:text-emerald-900 p-2 mr-2" title={activeTab === 'students' ? 'Open Student Record' : 'View Details'}>
                           <Eye className="w-5 h-5 inline" />
                         </button>
                       )}
@@ -471,7 +668,7 @@ const AdminDashboard = () => {
               </tbody>
             </table>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* View Details Modal */}
