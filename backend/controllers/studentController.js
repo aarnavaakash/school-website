@@ -39,7 +39,7 @@ exports.createStudent = async (req, res) => {
       studentData.photo = photo;
     }
     if (req.file) {
-      studentData.photo = `/uploads/${req.file.filename}`;
+      studentData.photo = req.file.path;
     }
     const student = await Student.create(studentData);
     
@@ -87,7 +87,7 @@ exports.updateStudent = async (req, res) => {
     // Regular profile update (no marks)
     const updateData = { ...req.body };
     if (req.file) {
-      updateData.photo = `/uploads/${req.file.filename}`;
+      updateData.photo = req.file.path;
     }
     const updatedStudent = await Student.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json(updatedStudent);

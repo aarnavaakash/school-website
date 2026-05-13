@@ -16,7 +16,7 @@ exports.createAdmission = async (req, res) => {
   try {
     const admissionData = { ...req.body };
     if (req.file) {
-      admissionData.photo = `/uploads/${req.file.filename}`;
+      admissionData.photo = req.file.path;
     }
     const admission = await Admission.create(admissionData);
     res.status(201).json(admission);

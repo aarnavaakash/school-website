@@ -13,7 +13,7 @@ exports.createTeacher = async (req, res) => {
   try {
     const teacherData = { ...req.body };
     if (req.file) {
-      teacherData.photo = `/uploads/${req.file.filename}`;
+      teacherData.photo = req.file.path;
     }
     const teacher = await Teacher.create(teacherData);
     res.status(201).json(teacher);
@@ -26,7 +26,7 @@ exports.updateTeacher = async (req, res) => {
   try {
     const teacherData = { ...req.body };
     if (req.file) {
-      teacherData.photo = `/uploads/${req.file.filename}`;
+      teacherData.photo = req.file.path;
     }
     const teacher = await Teacher.findByIdAndUpdate(req.params.id, teacherData, { new: true });
     if (teacher) {

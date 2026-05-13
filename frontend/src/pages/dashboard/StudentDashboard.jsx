@@ -504,9 +504,11 @@ const StudentDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Footer Watermark */}
-                  <div className="absolute bottom-4 right-4 opacity-5 font-black text-2xl rotate-[-25deg] select-none pointer-events-none">
-                    HNP INSTITUTE
+                  {/* Diagonal Watermark */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-0">
+                    <div className="opacity-[0.08] font-black text-3xl sm:text-4xl lg:text-5xl rotate-[-40deg] whitespace-nowrap uppercase tracking-[0.15em] text-slate-900">
+                      HNP INSTITUTE OF EDUCATION
+                    </div>
                   </div>
                 </div>
               ) : (

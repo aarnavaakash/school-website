@@ -13,7 +13,7 @@ exports.createGalleryItem = async (req, res) => {
   try {
     const itemData = { ...req.body };
     if (req.file) {
-      itemData.imageUrl = `/uploads/${req.file.filename}`;
+      itemData.imageUrl = req.file.path;
     }
     const item = await Gallery.create(itemData);
     res.status(201).json(item);
@@ -26,7 +26,7 @@ exports.updateGalleryItem = async (req, res) => {
   try {
     const itemData = { ...req.body };
     if (req.file) {
-      itemData.imageUrl = `/uploads/${req.file.filename}`;
+      itemData.imageUrl = req.file.path;
     }
     const item = await Gallery.findByIdAndUpdate(req.params.id, itemData, { new: true });
     if (item) {
