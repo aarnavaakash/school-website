@@ -391,17 +391,30 @@ const StudentDashboard = () => {
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50" id="printable-admit-card-container">
               {examRoutine ? (
-                <div id="printable-admit-card" className="bg-white border-2 border-slate-800 p-6 mx-auto max-w-[800px] shadow-sm relative overflow-hidden print:m-0 print:border-0 print:shadow-none text-slate-900" style={{ minHeight: '29.7cm' }}>
+                <div id="printable-admit-card" className="bg-white border-2 border-slate-800 p-8 mx-auto max-w-[800px] shadow-sm relative overflow-hidden text-slate-900">
                   {/* Header */}
                   <div className="mb-4">
                     <img src="/folder/admit-card/header.jpg" alt="School Header" className="w-full max-h-24 object-contain" />
                   </div>
 
-                  <div className="text-center mb-4">
-                    <h2 className="text-xl font-black uppercase tracking-widest border-2 border-black inline-block px-6 py-1.5 bg-slate-50 leading-none">Admit Card</h2>
-                    <p className="text-base font-bold mt-2 text-slate-900 underline decoration-2 underline-offset-4">{examRoutine.examName}</p>
+                  <div className="flex justify-between items-start mb-4 relative">
+                    <div className="flex-1 text-center">
+                      <div className="inline-block mt-4">
+                        <h2 className="text-xl font-black uppercase tracking-widest border-2 border-black px-6 py-1.5 bg-slate-50 leading-none">Admit Card</h2>
+                        <p className="text-base font-bold mt-2 text-slate-900 underline decoration-2 underline-offset-4">{examRoutine.examName}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Passport Size Photo */}
+                    <div className="w-24 h-28 border-2 border-slate-800 bg-slate-50 flex-shrink-0 flex items-center justify-center overflow-hidden">
+                      {profile.photo ? (
+                        <img src={assetUrl(profile.photo)} alt="Student" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="text-[8px] text-slate-400 text-center px-1 font-bold">PASTE PHOTO HERE</div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Student Info */}
@@ -443,21 +456,29 @@ const StudentDashboard = () => {
                   <div className="mb-6 text-[9px] leading-tight text-slate-700 text-left border-t border-slate-200 pt-4">
                     <h5 className="font-bold uppercase mb-2 text-slate-900">Important Instructions for Candidates:</h5>
                     <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                      <p>1. Reach centre by 8:00 AM (IST).</p>
-                      <p>2. No leaving before exam ends.</p>
-                      <p>3. PWD exemptions as per policy.</p>
-                      <p>4. Follow invigilator instructions.</p>
-                      <p>5. No mobile/electronic devices.</p>
-                      <p>6. Do not believe in rumors/fake news.</p>
-                      <p>7. Use blue/black pen only.</p>
-                      <p>8. Wear proper school uniform.</p>
-                      <p>9. Regular/Private candidates only.</p>
-                      <p>10. Ambiguity settled as per policy.</p>
-                      <p>11. English version prevails.</p>
-                    </div>
-                    <p className="mt-3 font-bold text-slate-900 uppercase text-[9px] text-center border-t border-slate-100 pt-2">ALL PARTICULARS CHECKED AND FOUND CORRECT</p>
-                  </div>
+                      <p>1. Please confirm the correctness of all details and subject(s) mentioned in the Admit Card.</p>
 
+<p>2. Examination will start at 8:30 AM (IST). Entry is not permitted after 8:00 AM (IST). You must report to the exam centre latest by 8:00 AM (IST).</p>
+
+<p>3. The time of commencement of the examination is 8:30 AM (IST). To confirm the time and date(s) of the examination, please check the date sheet.</p>
+
+<p>4. No candidate shall be allowed thereafter. Also, no candidate shall be allowed to leave the examination centre before the exam is over.</p>
+
+<p>5. Kindly follow the instructions given by invigilators, especially for writing the Roll Number in your Answer Book. Mention the correct Question Paper Set in the Answer Book and Attendance Sheet.</p>
+
+<p>6. MOBILE, ChatGPT and other communication devices are not allowed inside the examination centre. You should not indulge in any unfair practice. If found, you will be booked under unfair means (UFM) activity and action will be taken as per the rules of the Board.</p>
+
+<p>7. Do not believe in fake videos and messages uploaded on social media. Do not spread rumours too. You could be booked under unfair means for spreading and promoting rumours.</p>
+
+<p>8. You should carry only Blue/Royal Blue ballpoint/Gel/Fountain Pen, Pencil, Eraser, Scale, Sharpener, Geometry Instruments, Colours, Brushes, Admit Card & Identity-Card of the School etc. in a transparent pouch.</p>
+
+<p>9. If you are a regular candidate, you should wear a school uniform to appear in the examinations. If you are a private candidate, you can wear light clothes only.</p>
+
+<p>10. In case of any ambiguity found in the question paper, the same will be addressed by the school as per its policy.</p>
+
+<p>13. The English version of the question paper will prevail over the other version.</p>
+                    </div>
+                  </div>
                   {/* Signatures */}
                   <div className="flex justify-between items-end mt-4 pt-4 border-t-2 border-dashed border-slate-300">
                     <div className="text-center">

@@ -1,17 +1,36 @@
 @import "tailwindcss";
 
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    size: A4;
+    margin: 0;
   }
-  #printable-admit-card, #printable-admit-card * {
-    visibility: visible;
+  body {
+    visibility: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  #printable-admit-card, 
+  #printable-admit-card * {
+    visibility: visible !important;
   }
   #printable-admit-card {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 210mm !important;
+    max-height: 99vh !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0.8cm !important;
+    background: white !important;
+    z-index: 9999999 !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: flex !important;
+    flex-direction: column !important;
+    zoom: 98%;
   }
   .no-print {
     display: none !important;
