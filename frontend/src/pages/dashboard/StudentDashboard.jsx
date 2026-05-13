@@ -393,46 +393,46 @@ const StudentDashboard = () => {
             
             <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
               {examRoutine ? (
-                <div id="printable-admit-card" className="bg-white border-2 border-slate-800 p-8 mx-auto max-w-[800px] shadow-sm relative overflow-hidden print:m-0 print:border-0 print:shadow-none">
+                <div id="printable-admit-card" className="bg-white border-2 border-slate-800 p-6 mx-auto max-w-[800px] shadow-sm relative overflow-hidden print:m-0 print:border-0 print:shadow-none text-slate-900" style={{ minHeight: '29.7cm' }}>
                   {/* Header */}
                   <div className="mb-4">
-                    <img src="/folder/admit-card/header.jpg" alt="School Header" className="w-full" />
+                    <img src="/folder/admit-card/header.jpg" alt="School Header" className="w-full max-h-24 object-contain" />
                   </div>
 
-                  <div className="text-center mb-6">
-                    <h2 className="text-2xl font-black uppercase tracking-widest border-2 border-black inline-block px-8 py-2 bg-slate-50">Admit Card</h2>
-                    <p className="text-xl font-bold mt-4 text-slate-900 underline decoration-2 underline-offset-4">{examRoutine.examName}</p>
+                  <div className="text-center mb-4">
+                    <h2 className="text-xl font-black uppercase tracking-widest border-2 border-black inline-block px-6 py-1.5 bg-slate-50 leading-none">Admit Card</h2>
+                    <p className="text-base font-bold mt-2 text-slate-900 underline decoration-2 underline-offset-4">{examRoutine.examName}</p>
                   </div>
 
                   {/* Student Info */}
-                  <div className="grid grid-cols-2 gap-8 mb-8 border-y-2 border-slate-200 py-6 text-left">
-                    <div className="space-y-3">
-                      <p className="text-lg"><span className="font-bold w-32 inline-block">Name:</span> <span className="font-medium text-blue-900 uppercase">{profile.name}</span></p>
-                      <p className="text-lg"><span className="font-bold w-32 inline-block">Father's Name:</span> <span className="font-medium">{profile.parentName}</span></p>
+                  <div className="grid grid-cols-2 gap-4 mb-4 border-y-2 border-slate-200 py-3 text-left">
+                    <div className="space-y-1">
+                      <p className="text-sm"><span className="font-bold w-24 inline-block">Name:</span> <span className="font-medium text-blue-900 uppercase">{profile.name}</span></p>
+                      <p className="text-sm"><span className="font-bold w-24 inline-block">Father's Name:</span> <span className="font-medium">{profile.parentName}</span></p>
                     </div>
-                    <div className="space-y-3">
-                      <p className="text-lg"><span className="font-bold w-32 inline-block">Class:</span> <span className="font-medium">{profile.class}</span></p>
-                      <p className="text-lg"><span className="font-bold w-32 inline-block">Roll No:</span> <span className="font-medium">{profile.rollNumber}</span></p>
+                    <div className="space-y-1">
+                      <p className="text-sm"><span className="font-bold w-24 inline-block">Class:</span> <span className="font-medium">{profile.class}</span></p>
+                      <p className="text-sm"><span className="font-bold w-24 inline-block">Roll No:</span> <span className="font-medium">{profile.rollNumber}</span></p>
                     </div>
                   </div>
 
                   {/* Routine */}
-                  <div className="mb-8 text-left">
-                    <h4 className="font-bold text-lg mb-3 uppercase tracking-wide bg-slate-900 text-white px-4 py-1 inline-block">Examination Schedule</h4>
+                  <div className="mb-4 text-left">
+                    <h4 className="font-bold text-xs mb-2 uppercase tracking-wide bg-slate-900 text-white px-3 py-0.5 inline-block">Examination Schedule</h4>
                     <table className="w-full border-collapse border-2 border-slate-800">
                       <thead>
                         <tr className="bg-slate-100">
-                          <th className="border-2 border-slate-800 p-3 text-left font-black uppercase">Subject</th>
-                          <th className="border-2 border-slate-800 p-3 text-center font-black uppercase">Date</th>
-                          <th className="border-2 border-slate-800 p-3 text-center font-black uppercase">Time</th>
+                          <th className="border-2 border-slate-800 p-2 text-left text-xs font-black uppercase">Subject</th>
+                          <th className="border-2 border-slate-800 p-2 text-center text-xs font-black uppercase">Date</th>
+                          <th className="border-2 border-slate-800 p-2 text-center text-xs font-black uppercase">Time</th>
                         </tr>
                       </thead>
                       <tbody>
                         {examRoutine.routine.map((row, rIdx) => (
                           <tr key={rIdx}>
-                            <td className="border-2 border-slate-800 p-3 font-bold text-slate-800 uppercase">{row.subject}</td>
-                            <td className="border-2 border-slate-800 p-3 text-center font-medium">{row.date}</td>
-                            <td className="border-2 border-slate-800 p-3 text-center font-medium">{row.time}</td>
+                            <td className="border-2 border-slate-800 p-2 font-bold text-xs text-slate-800 uppercase">{row.subject}</td>
+                            <td className="border-2 border-slate-800 p-2 text-center text-xs font-medium">{row.date}</td>
+                            <td className="border-2 border-slate-800 p-2 text-center text-xs font-medium">{row.time}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -440,33 +440,34 @@ const StudentDashboard = () => {
                   </div>
 
                   {/* Instructions */}
-                  <div className="mb-10 text-[10px] leading-relaxed text-slate-700 text-left border-t border-slate-200 pt-6">
-                    <h5 className="font-bold uppercase mb-3 text-slate-900">Important Instructions for Candidates:</h5>
-                    <div className="grid grid-cols-1 gap-1.5">
-                      <p>1. Candidates should reach the exam centre latest by 10:00 AM (IST).</p>
-                      <p>2. No candidate shall be allowed to leave the examination centre before the exam is over.</p>
-                      <p>3. If the PWD category of a student is "Yes", the Centre Superintendent will ensure availability of desired exemptions.</p>
-                      <p>4. Kindly follow instructions given by invigilators, especially for writing the Roll Number in your Answer Book.</p>
-                      <p>5. MOBILE, ChatGPT and other communication devices are not allowed inside the examination centre.</p>
-                      <p>6. Do not believe in fake videos and messages on social media. Do not spread rumours.</p>
-                      <p>7. Carry only Blue/Royal Blue ballpoint/Gel/Fountain Pen, Pencil, Eraser, Scale, Sharpener, Geometry Instruments.</p>
-                      <p>8. If you are a regular candidate, you should wear a school uniform to appear in the examinations.</p>
-                      <p>9. Both regular and private candidates will appear only in the subjects mentioned above.</p>
-                      <p>10. In case of any ambiguity found in the question paper, the same will be addressed as per policy.</p>
-                      <p>11. The English version of the question paper will prevail over the other version.</p>
+                  <div className="mb-6 text-[9px] leading-tight text-slate-700 text-left border-t border-slate-200 pt-4">
+                    <h5 className="font-bold uppercase mb-2 text-slate-900">Important Instructions for Candidates:</h5>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                      <p>1. Reach centre by 8:00 AM (IST).</p>
+                      <p>2. No leaving before exam ends.</p>
+                      <p>3. PWD exemptions as per policy.</p>
+                      <p>4. Follow invigilator instructions.</p>
+                      <p>5. No mobile/electronic devices.</p>
+                      <p>6. Do not believe in rumors/fake news.</p>
+                      <p>7. Use blue/black pen only.</p>
+                      <p>8. Wear proper school uniform.</p>
+                      <p>9. Regular/Private candidates only.</p>
+                      <p>10. Ambiguity settled as per policy.</p>
+                      <p>11. English version prevails.</p>
                     </div>
+                    <p className="mt-3 font-bold text-slate-900 uppercase text-[9px] text-center border-t border-slate-100 pt-2">ALL PARTICULARS CHECKED AND FOUND CORRECT</p>
                   </div>
 
                   {/* Signatures */}
-                  <div className="flex justify-between items-end mt-8 pt-6 border-t-2 border-dashed border-slate-300">
+                  <div className="flex justify-between items-end mt-4 pt-4 border-t-2 border-dashed border-slate-300">
                     <div className="text-center">
                       <img
                         src="/folder/admit-card/sign-rituraj.png?v=2"
                         alt="Exam Controller Sign"
-                        className="h-16 mx-auto mb-2 object-contain mix-blend-multiply"
+                        className="h-12 mx-auto mb-1 object-contain mix-blend-multiply"
                       />
-                      <div className="border-t-2 border-black w-44 pt-1">
-                        <p className="text-[10px] font-bold text-slate-700 uppercase">Exam Controller</p>
+                      <div className="border-t border-black w-36 pt-0.5">
+                        <p className="text-[9px] font-bold text-slate-700 uppercase">Exam Controller</p>
                       </div>
                     </div>
 
@@ -474,10 +475,10 @@ const StudentDashboard = () => {
                       <img
                         src="/folder/admit-card/sign-rohit.png?v=2"
                         alt="Principal Sign"
-                        className="h-16 mx-auto mb-2 object-contain mix-blend-multiply"
+                        className="h-12 mx-auto mb-1 object-contain mix-blend-multiply"
                       />
-                      <div className="border-t-2 border-black w-44 pt-1">
-                        <p className="text-[10px] font-bold text-slate-700 uppercase">Principal</p>
+                      <div className="border-t border-black w-36 pt-0.5">
+                        <p className="text-[9px] font-bold text-slate-700 uppercase">Principal</p>
                       </div>
                     </div>
                   </div>
