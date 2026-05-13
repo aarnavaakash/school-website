@@ -13,10 +13,21 @@ const studentSchema = new mongoose.Schema({
   photo: { type: String },
   attendance: { type: Number, default: 0 },
   result: { type: String, default: 'Pending' },
+  examName: { type: String, default: '' },
   marks: [{
     subject: { type: String, required: true },
     score: { type: Number, required: true },
     maxScore: { type: Number, default: 100 }
+  }],
+  examResults: [{
+    examName: { type: String, required: true },
+    marks: [{
+      subject: { type: String, required: true },
+      score: { type: Number, required: true },
+      maxScore: { type: Number, default: 100 }
+    }],
+    result: { type: String, default: 'Pending' },
+    date: { type: Date, default: Date.now }
   }]
 }, { timestamps: true });
 

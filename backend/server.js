@@ -61,6 +61,7 @@ app.use('/api/gallery', require('./routes/galleryRoutes'));
 app.use('/api/admissions', require('./routes/admissionRoutes'));
 app.use('/api/contacts', require('./routes/contactRoutes'));
 app.use('/api/homework', require('./routes/homeworkRoutes'));
+app.use('/api/exams', require('./routes/examRoutes'));
 
 const PORT = process.env.PORT || 5000;
 

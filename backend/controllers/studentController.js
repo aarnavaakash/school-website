@@ -62,6 +62,29 @@ exports.updateStudent = async (req, res) => {
       await User.findOneAndUpdate({ email: student.email }, { name: req.body.name });
     }
 
+    // Check if this is a marks/exam save (has marks array and examName)
+    if (req.body.marks && req.body.examName) {
+      const examResult = {
+        examName: req.body.examName,
+        marks: req.body.marks,
+        result: req.body.result || 'Pending',
+        date: new Date()
+      };
+
+      // Push to examResults history AND update latest marks/result/examName
+      const updatedStudent = await Student.findByIdAndUpdate(req.params.id, {
+        $push: { examResults: examResult },
+        $set: {
+          marks: req.body.marks,
+          result: req.body.result,
+          examName: req.body.examName
+        }
+      }, { new: true });
+
+      return res.json(updatedStudent);
+    }
+
+    // Regular profile update (no marks)
     const updateData = { ...req.body };
     if (req.file) {
       updateData.photo = `/uploads/${req.file.filename}`;

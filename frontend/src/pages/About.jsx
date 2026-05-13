@@ -37,7 +37,7 @@ const About = () => {
                className="md:col-span-2 space-y-10 mt-4 md:mt-0"
             >
               <div>
-                <h2 className="text-2xl font-bold mb-3 text-slate-900">Principal’s Message</h2>
+                <h2 className="text-2xl font-bold mb-3 text-slate-900">Director's Message</h2>
                 <p className="text-slate-700 leading-relaxed text-lg">
                   Welcome to H.N.P. Institute Of Education. We combine academic excellence with value-based learning,
                   ensuring that every child grows in a safe, secure, and child-friendly environment. Our approach focuses
@@ -51,6 +51,99 @@ const About = () => {
                   Run by the <strong className="text-slate-900">Mira Educational & Welfare Trust</strong>, H.N.P. Institute of Education was established with a
                   commitment to providing quality education in Motihari. We are an ISO 9001:2015 Certified Institution
                   dedicated to nurturing young minds from Play Group to Class V.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* Principal's Message Section */}
+      <div className="py-16 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-start">
+            <motion.div
+               initial={{ opacity: 0, x: -50 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ duration: 0.6, delay: 0.2 }}
+               className="md:col-span-1 text-center"
+            >
+              <img 
+                src="/folder/principal-head.jpg" 
+                alt="Principal" 
+                className="w-full rounded-lg shadow-lg mb-6 object-cover"
+              />
+              <h3 className="text-xl font-bold text-slate-900">Rohit Kumar</h3>
+              <p className="text-slate-600 text-sm mt-1">Principal (M.Sc, B.Sc, B.Ed)</p>
+            </motion.div>
+
+            <motion.div
+               initial={{ opacity: 0, x: 50 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ duration: 0.6, delay: 0.4 }}
+               className="md:col-span-2 mt-4 md:mt-0"
+            >
+              <div>
+                <h2 className="text-2xl font-bold mb-3 text-slate-900">Principal's Message</h2>
+                <p className="text-slate-700 leading-relaxed text-lg">
+                  The dedication of our teachers, support of parents, and hard work of students together create a strong 
+                  foundation for success. We continuously strive to maintain high academic standards along with moral and 
+                  social development.
+                </p>
+                <p className="text-slate-700 leading-relaxed text-lg mt-4">
+                  I encourage all students to work hard, stay disciplined, and make the best use of the opportunities 
+                  provided by the school.
+                </p>
+                <p className="text-slate-700 leading-relaxed text-lg mt-4">
+                  Thank you for your trust and support.
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+      {/* Academic Director's Message Section */}
+      <div className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-start">
+            <motion.div
+               initial={{ opacity: 0, x: -50 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ duration: 0.6, delay: 0.2 }}
+               className="md:col-span-1 text-center"
+            >
+              <img 
+                src="/folder/academic-director.jpg" 
+                alt="Academic Director" 
+                className="w-full rounded-lg shadow-lg mb-6 object-cover"
+              />
+              <h3 className="text-xl font-bold text-slate-900">Rituraj Kumar</h3>
+              <p className="text-slate-600 text-sm mt-1">Academic Director (BA, B.Ed)</p>
+            </motion.div>
+
+            <motion.div
+               initial={{ opacity: 0, x: 50 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ duration: 0.6, delay: 0.4 }}
+               className="md:col-span-2 mt-4 md:mt-0"
+            >
+              <div>
+                <h2 className="text-2xl font-bold mb-3 text-slate-900">Academic Director's Message</h2>
+                <p className="text-slate-700 leading-relaxed text-lg">
+                  Our academic programs are designed to help students develop critical thinking, creativity, and 
+                  confidence so they can face future challenges successfully. We continuously work to maintain high 
+                  educational standards through dedicated teaching methods, regular assessments, and student-centered learning.
+                </p>
+                <p className="text-slate-700 leading-relaxed text-lg mt-4">
+                  We believe that every child has unique potential, and our goal is to guide each student toward 
+                  excellence in academics as well as personal growth.
+                </p>
+                <p className="text-slate-700 leading-relaxed text-lg mt-4">
+                  I sincerely thank all parents and teachers for their continuous support and cooperation in building 
+                  a better future for our students.
+                </p>
+                <p className="text-slate-700 leading-relaxed text-lg mt-4 font-bold">
+                  Best Wishes,
                 </p>
               </div>
             </motion.div>

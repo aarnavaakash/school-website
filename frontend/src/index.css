@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-admit-card, #printable-admit-card * {
+    visibility: visible;
+  }
+  #printable-admit-card {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
 @layer base {
   body {
     @apply bg-slate-50 text-slate-900;
