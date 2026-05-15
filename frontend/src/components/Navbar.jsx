@@ -29,69 +29,73 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Left Side Logo */}
-          <div className="flex items-center space-x-3">
-            <img src="/hnp-logo.jpg" alt="HNP Institute" className="h-12 w-12 object-contain bg-white rounded-sm" />
-            <Link to="/" className="text-xl lg:text-2xl font-bold tracking-wider">HNP Institute</Link>
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <img src="/hnp-logo.jpg" alt="HNP Institute" className="h-10 w-10 sm:h-12 sm:w-12 object-contain bg-white rounded-sm" />
+            <Link to="/" className="text-lg sm:text-xl lg:text-2xl font-bold tracking-wider">HNP Institute</Link>
           </div>
           
-          {/* Right Side Links & Logo */}
-          <div className="hidden lg:flex items-center space-x-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.name}
-                to={link.path}
-                className="hover:bg-blue-800 hover:text-white px-2 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                {link.name}
-              </Link>
-            ))}
-            {token ? (
-              <div className="flex items-center space-x-2 ml-2">
-                {role === 'admin' && (
-                  <Link
-                    to="/admin"
-                    className="bg-blue-800 hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors border border-blue-600"
-                  >
-                    Admin
-                  </Link>
-                )}
-                {role === 'student' && (
-                  <Link
-                    to="/student"
-                    className="bg-blue-800 hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors border border-blue-600"
-                  >
-                    Dashboard
-                  </Link>
-                )}
-                <button
-                  onClick={handleLogout}
-                  className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+          {/* Right Side Items */}
+          <div className="flex items-center justify-end">
+            {/* Desktop Links & Buttons */}
+            <div className="hidden lg:flex items-center space-x-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  to={link.path}
+                  className="hover:bg-blue-800 hover:text-white px-2 py-2 rounded-md text-sm font-medium transition-colors"
                 >
-                  Logout
+                  {link.name}
+                </Link>
+              ))}
+              {token ? (
+                <div className="flex items-center space-x-2 ml-2">
+                  {role === 'admin' && (
+                    <Link
+                      to="/admin"
+                      className="bg-blue-800 hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors border border-blue-600"
+                    >
+                      Admin
+                    </Link>
+                  )}
+                  {role === 'student' && (
+                    <Link
+                      to="/student"
+                      className="bg-blue-800 hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors border border-blue-600"
+                    >
+                      Dashboard
+                    </Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex items-center bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors ml-2"
+                >
+                  <User className="h-4 w-4 mr-1" />
+                  Login
+                </Link>
+              )}
+            </div>
+
+            {/* Logo and Mobile Menu */}
+            <div className="flex items-center space-x-2 sm:space-x-3 ml-auto lg:ml-4 lg:pl-4 lg:border-l lg:border-blue-700">
+              <img src="/mira-logo.jpg" alt="Mira Educational Trust" className="h-10 w-10 sm:h-12 sm:w-12 object-contain bg-white rounded-full" />
+              
+              <div className="flex lg:hidden">
+                <button
+                  onClick={() => setIsOpen(!isOpen)}
+                  className="inline-flex items-center justify-center p-1 sm:p-2 rounded-md text-gray-300 hover:text-white hover:bg-blue-800 focus:outline-none"
+                >
+                  {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
                 </button>
               </div>
-            ) : (
-              <Link
-                to="/login"
-                className="flex items-center bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors ml-2"
-              >
-                <User className="h-4 w-4 mr-1" />
-                Login
-              </Link>
-            )}
-            {/* Logo immediately after buttons */}
-            <div className="flex items-center ml-2 pl-2 border-l border-blue-700">
-              <img src="/mira-logo.jpg" alt="Mira Educational Trust" className="h-12 w-12 object-contain bg-white rounded-full" />
             </div>
-          </div>
-
-          <div className="-mr-2 flex lg:hidden">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-blue-800 focus:outline-none"
-            >
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
           </div>
         </div>
       </div>
