@@ -117,7 +117,7 @@ const About = () => {
                 alt="Academic Director" 
                 className="w-full rounded-lg shadow-lg mb-6 object-cover"
               />
-              <h3 className="text-xl font-bold text-slate-900">Rituraj Kumar</h3>
+              <h3 className="text-xl font-bold text-slate-900">not available Kumar</h3>
               <p className="text-slate-600 text-sm mt-1">Academic Director (BA, B.Ed)</p>
             </motion.div>
 
