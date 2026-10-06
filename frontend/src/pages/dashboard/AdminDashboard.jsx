@@ -108,28 +108,42 @@ const AdminDashboard = () => {
   };
 
   const classGroups = {
-    'Play Group': ['play group', 'pg'],
-    'Nursery': ['nursery', 'nur'],
-    'LKG': ['lkg'],
-    'UKG': ['ukg'],
-    'Class I': ['1', 'i', 'class i', 'class 1'],
-    'Class II': ['2', 'ii', 'class ii', 'class 2'],
-    'Class III': ['3', 'iii', 'class iii', 'class 3'],
-    'Class IV': ['4', 'iv', 'class iv', 'class 4'],
-    'Class V': ['5', 'v', 'class v', 'class 5'],
-    'Class VI': ['6', 'vi', 'class vi', 'class 6'],
-    'Class VII': ['7', 'vii', 'class vii', 'class 7'],
-    'Class VIII': ['8', 'viii', 'class viii', 'class 8']
+    'Play Group': ['play group', 'playgroup', 'play', 'pg', 'p.g.', 'p.g'],
+    'Nursery': ['nursery', 'nur', 'nursury'],
+    'LKG': ['lkg', 'l.k.g.'],
+    'UKG': ['ukg', 'u.k.g.'],
+    'Class I': ['1', 'i', 'class i', 'class 1', 'std 1', 'std i'],
+    'Class II': ['2', 'ii', 'class ii', 'class 2', 'std 2', 'std ii'],
+    'Class III': ['3', 'iii', 'class iii', 'class 3', 'std 3', 'std iii'],
+    'Class IV': ['4', 'iv', 'class iv', 'class 4', 'std 4', 'std iv'],
+    'Class V': ['5', 'v', 'class v', 'class 5', 'std 5', 'std v'],
+    'Class VI': ['6', 'vi', 'class vi', 'class 6', 'std 6', 'std vi'],
+    'Class VII': ['7', 'vii', 'class vii', 'class 7', 'std 7', 'std vii'],
+    'Class VIII': ['8', 'viii', 'class viii', 'class 8', 'std 8', 'std viii']
   };
 
   const isClassMatch = (itemClass, filter) => {
-    if (filter === 'All') return true;
-    if (itemClass === filter) return true;
-    const group = classGroups[filter];
-    if (group && itemClass) {
-        return group.includes(String(itemClass).toLowerCase());
+    if (!filter || filter === 'All') return true;
+    if (!itemClass) return false;
+
+    const itemClean = String(itemClass).trim().toLowerCase();
+    const filterClean = String(filter).trim().toLowerCase();
+
+    if (itemClean === filterClean) return true;
+
+    for (const [key, aliases] of Object.entries(classGroups)) {
+      const keyClean = key.toLowerCase();
+      const allVariants = [keyClean, ...aliases.map(a => a.toLowerCase())];
+      
+      const filterMatches = allVariants.includes(filterClean);
+      const itemMatches = allVariants.includes(itemClean);
+
+      if (filterMatches && itemMatches) {
+        return true;
+      }
     }
-    return false;
+
+    return itemClean.includes(filterClean) || filterClean.includes(itemClean);
   };
 
   const getFilteredData = () => {
@@ -629,7 +643,17 @@ const AdminDashboard = () => {
               {activeTab === 'students' && (
                 <>
                   <input required placeholder="Student Name" className="border p-2 rounded" onChange={e => setNewItem({...newItem, name: e.target.value})} value={newItem.name || ''} />
-                  <input required placeholder="Class" className="border p-2 rounded" onChange={e => setNewItem({...newItem, class: e.target.value})} value={newItem.class || ''} />
+                  <select 
+                    required 
+                    className="border p-2 rounded bg-white text-slate-800" 
+                    onChange={e => setNewItem({...newItem, class: e.target.value})} 
+                    value={newItem.class || ''}
+                  >
+                    <option value="">Select Class</option>
+                    {['Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map(cls => (
+                      <option key={cls} value={cls}>{cls}</option>
+                    ))}
+                  </select>
                   <input required placeholder="Roll Number" className="border p-2 rounded" onChange={e => setNewItem({...newItem, rollNumber: e.target.value})} value={newItem.rollNumber || ''} />
                   <input required placeholder="Parent Name" className="border p-2 rounded" onChange={e => setNewItem({...newItem, parentName: e.target.value})} value={newItem.parentName || ''} />
                   <input required placeholder="Phone" className="border p-2 rounded" onChange={e => setNewItem({...newItem, phone: e.target.value})} value={newItem.phone || ''} />
@@ -674,7 +698,17 @@ const AdminDashboard = () => {
             </div>
             <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <input required placeholder="Student Name" className="border p-2 rounded" onChange={e => setNewItem({...newItem, name: e.target.value})} value={newItem.name || ''} />
-              <input required placeholder="Class" className="border p-2 rounded" onChange={e => setNewItem({...newItem, class: e.target.value})} value={newItem.class || ''} />
+              <select 
+                required 
+                className="border p-2 rounded bg-white text-slate-800" 
+                onChange={e => setNewItem({...newItem, class: e.target.value})} 
+                value={newItem.class || ''}
+              >
+                <option value="">Select Class</option>
+                {['Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
               <input required placeholder="Roll Number" className="border p-2 rounded" onChange={e => setNewItem({...newItem, rollNumber: e.target.value})} value={newItem.rollNumber || ''} />
               <input required placeholder="Parent Name" className="border p-2 rounded" onChange={e => setNewItem({...newItem, parentName: e.target.value})} value={newItem.parentName || ''} />
               <input required placeholder="Phone" className="border p-2 rounded" onChange={e => setNewItem({...newItem, phone: e.target.value})} value={newItem.phone || ''} />

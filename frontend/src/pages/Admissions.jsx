@@ -115,8 +115,17 @@ const Admissions = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Class Applying For *</label>
-                  <input required type="text" className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" 
-                    value={formData.classApplying} onChange={e => setFormData({...formData, classApplying: e.target.value})} />
+                  <select 
+                    required 
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-slate-800" 
+                    value={formData.classApplying} 
+                    onChange={e => setFormData({...formData, classApplying: e.target.value})}
+                  >
+                    <option value="">Select Class</option>
+                    {['Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map(cls => (
+                      <option key={cls} value={cls}>{cls}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

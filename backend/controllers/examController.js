@@ -10,38 +10,38 @@ exports.getExams = async (req, res) => {
 };
 
 const classGroups = {
-  'Play Group': ['play group', 'pg'],
-  'Nursery': ['nursery', 'nur'],
-  'LKG': ['lkg'],
-  'UKG': ['ukg'],
-  'Class I': ['1', 'i', 'class i', 'class 1'],
-  'Class II': ['2', 'ii', 'class ii', 'class 2'],
-  'Class III': ['3', 'iii', 'class iii', 'class 3'],
-  'Class IV': ['4', 'iv', 'class iv', 'class 4'],
-  'Class V': ['5', 'v', 'class v', 'class 5'],
-  'Class VI': ['6', 'vi', 'class vi', 'class 6'],
-  'Class VII': ['7', 'vii', 'class vii', 'class 7'],
-  'Class VIII': ['8', 'viii', 'class viii', 'class 8']
+  'Play Group': ['play group', 'playgroup', 'play', 'pg', 'p.g.', 'p.g'],
+  'Nursery': ['nursery', 'nur', 'nursury'],
+  'LKG': ['lkg', 'l.k.g.'],
+  'UKG': ['ukg', 'u.k.g.'],
+  'Class I': ['1', 'i', 'class i', 'class 1', 'std 1', 'std i'],
+  'Class II': ['2', 'ii', 'class ii', 'class 2', 'std 2', 'std ii'],
+  'Class III': ['3', 'iii', 'class iii', 'class 3', 'std 3', 'std iii'],
+  'Class IV': ['4', 'iv', 'class iv', 'class 4', 'std 4', 'std iv'],
+  'Class V': ['5', 'v', 'class v', 'class 5', 'std 5', 'std v'],
+  'Class VI': ['6', 'vi', 'class vi', 'class 6', 'std 6', 'std vi'],
+  'Class VII': ['7', 'vii', 'class vii', 'class 7', 'std 7', 'std vii'],
+  'Class VIII': ['8', 'viii', 'class viii', 'class 8', 'std 8', 'std viii']
 };
 
 const isClassMatch = (itemClass, targetClass) => {
   if (!itemClass || !targetClass) return false;
-  if (itemClass === targetClass) return true;
-  
-  const itemLower = String(itemClass).toLowerCase();
-  const targetLower = String(targetClass).toLowerCase();
-  
-  if (itemLower === targetLower) return true;
 
-  // Check if targetClass is a key in classGroups and itemClass is in its values
-  for (const [key, values] of Object.entries(classGroups)) {
-    if (key === targetClass && values.includes(itemLower)) return true;
-    if (key === itemClass && values.includes(targetLower)) return true;
-    // Check if both are in the same group
-    if (values.includes(itemLower) && values.includes(targetLower)) return true;
+  const itemClean = String(itemClass).trim().toLowerCase();
+  const targetClean = String(targetClass).trim().toLowerCase();
+
+  if (itemClean === targetClean) return true;
+
+  for (const [key, aliases] of Object.entries(classGroups)) {
+    const keyClean = key.toLowerCase();
+    const allVariants = [keyClean, ...aliases.map(a => a.toLowerCase())];
+    
+    if (allVariants.includes(itemClean) && allVariants.includes(targetClean)) {
+      return true;
+    }
   }
   
-  return false;
+  return itemClean.includes(targetClean) || targetClean.includes(itemClean);
 };
 
 exports.getExamByClass = async (req, res) => {

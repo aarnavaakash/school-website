@@ -145,8 +145,36 @@ exports.getStudentDashboard = async (req, res) => {
         // Find School Rank
         const schoolRank = studentsWithPercentage.findIndex(s => s._id.toString() === student._id.toString()) + 1;
 
-        // Find Class Rank
-        const classStudents = studentsWithPercentage.filter(s => s.class === student.class);
+        // Find Class Rank with flexible class matching
+        const classGroups = {
+          'Play Group': ['play group', 'playgroup', 'play', 'pg', 'p.g.', 'p.g'],
+          'Nursery': ['nursery', 'nur', 'nursury'],
+          'LKG': ['lkg', 'l.k.g.'],
+          'UKG': ['ukg', 'u.k.g.'],
+          'Class I': ['1', 'i', 'class i', 'class 1', 'std 1', 'std i'],
+          'Class II': ['2', 'ii', 'class ii', 'class 2', 'std 2', 'std ii'],
+          'Class III': ['3', 'iii', 'class iii', 'class 3', 'std 3', 'std iii'],
+          'Class IV': ['4', 'iv', 'class iv', 'class 4', 'std 4', 'std iv'],
+          'Class V': ['5', 'v', 'class v', 'class 5', 'std 5', 'std v'],
+          'Class VI': ['6', 'vi', 'class vi', 'class 6', 'std 6', 'std vi'],
+          'Class VII': ['7', 'vii', 'class vii', 'class 7', 'std 7', 'std vii'],
+          'Class VIII': ['8', 'viii', 'class viii', 'class 8', 'std 8', 'std viii']
+        };
+
+        const isSameClass = (c1, c2) => {
+          if (!c1 || !c2) return false;
+          const s1 = String(c1).trim().toLowerCase();
+          const s2 = String(c2).trim().toLowerCase();
+          if (s1 === s2) return true;
+          for (const [key, aliases] of Object.entries(classGroups)) {
+            const keyClean = key.toLowerCase();
+            const allVariants = [keyClean, ...aliases.map(a => a.toLowerCase())];
+            if (allVariants.includes(s1) && allVariants.includes(s2)) return true;
+          }
+          return s1.includes(s2) || s2.includes(s1);
+        };
+
+        const classStudents = studentsWithPercentage.filter(s => isSameClass(s.class, student.class));
         const classRank = classStudents.findIndex(s => s._id.toString() === student._id.toString()) + 1;
         const classTopper = classStudents.length > 0 ? classStudents[0] : null;
 
