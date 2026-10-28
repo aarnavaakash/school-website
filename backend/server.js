@@ -40,7 +40,7 @@ app.get("/seed-admin", async (req, res) => {
   const exists = await User.findOne({ email: "admin@hnp.edu" });
   if (exists) return res.send("Admin already exists");
 
-  const hashedPassword = await bcrypt.hash("admin123", 10);
+  const hashedPassword = await bcrypt.hash("hnp@1987", 10);
 
   await User.create({
     name: "Admin",

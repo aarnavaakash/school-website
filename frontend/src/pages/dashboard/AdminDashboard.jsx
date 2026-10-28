@@ -1,12 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from '../../api/axios';
 import { assetUrl } from '../../config/api';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Award, Calendar, Mail, MapPin, Phone, Users, FileText, Image as ImageIcon, MessageSquare, Plus, Trash2, Edit2, Eye, X, BookOpen, Search, UserPlus, Printer } from 'lucide-react';
+import { ArrowLeft, Award, Calendar, Mail, MapPin, Phone, Users, FileText, Image as ImageIcon, MessageSquare, Plus, Trash2, Edit2, Eye, X, BookOpen, Search, UserPlus, Printer, Save, Check } from 'lucide-react';
+import AdmitCard from '../../components/AdmitCard';
+import ReportCard, { getDefaultReportCard } from '../../components/ReportCard';
+import { printElement } from '../../utils/printHelper';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('notices');
   const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    if (!token || role !== 'admin') {
+      navigate('/login');
+    }
+  }, [navigate]);
   const [loading, setLoading] = useState(false);
   const [newItem, setNewItem] = useState({});
   const [isEditing, setIsEditing] = useState(false);
@@ -28,6 +41,24 @@ const AdminDashboard = () => {
   const [admitCardExamName, setAdmitCardExamName] = useState('');
   const [admitCardRoutine, setAdmitCardRoutine] = useState([{ subject: '', date: '', time: '' }]);
   const [activeRoutines, setActiveRoutines] = useState([]);
+
+  // Admit Card Filter & Print State
+  const [admitCardFilterClass, setAdmitCardFilterClass] = useState('All');
+  const [admitCardSearch, setAdmitCardSearch] = useState('');
+  const [previewAdmitCardStudent, setPreviewAdmitCardStudent] = useState(null);
+  const [activeAdmitCardSubtab, setActiveAdmitCardSubtab] = useState('students');
+  const batchContainerRef = useRef(null);
+
+  // Report Card State
+  const [reportCardFilterClass, setReportCardFilterClass] = useState('All');
+  const [reportCardSearch, setReportCardSearch] = useState('');
+  const [reportCardSelectedExam, setReportCardSelectedExam] = useState('Half Yearly Examination');
+  const [editingReportCardStudent, setEditingReportCardStudent] = useState(null);
+  const [previewReportCardStudent, setPreviewReportCardStudent] = useState(null);
+  const [previewReportCardData, setPreviewReportCardData] = useState(null);
+  const [reportCardDraft, setReportCardDraft] = useState(null);
+  const [isSavingReportCard, setIsSavingReportCard] = useState(false);
+  const batchReportCardRef = useRef(null);
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -157,9 +188,178 @@ const AdminDashboard = () => {
     });
   };
 
+  const getStudentRoutine = (student) => {
+    if (!student || !activeRoutines || activeRoutines.length === 0) return null;
+    return activeRoutines.find(r => isClassMatch(student.class, r.class)) || null;
+  };
+
+  const getAdmitCardStudents = () => {
+    if (!Array.isArray(data)) return [];
+    return data.filter(student => {
+      const classMatch = isClassMatch(student.class, admitCardFilterClass);
+      const searchMatch = admitCardSearch 
+        ? (student.name || '').toLowerCase().includes(admitCardSearch.toLowerCase()) ||
+          (student.rollNumber || '').toLowerCase().includes(admitCardSearch.toLowerCase())
+        : true;
+      return classMatch && searchMatch;
+    });
+  };
+
+  const handlePrintAll = async () => {
+    const studentsToPrint = getAdmitCardStudents();
+    if (studentsToPrint.length === 0) {
+      alert('No students found for this class filter.');
+      return;
+    }
+
+    const container = batchContainerRef.current;
+    if (!container) {
+      alert('Print container not ready. Please try again.');
+      return;
+    }
+
+    const safeClass = admitCardFilterClass === 'All' ? 'All_Classes' : admitCardFilterClass.replace(/\s+/g, '_');
+    setActionMessage(`Opening Print / Save as PDF for ${studentsToPrint.length} students...`);
+    
+    try {
+      await printElement(container, `HNP_Admit_Cards_${safeClass}`);
+    } catch (err) {
+      console.error('Print error:', err);
+      setActionMessage('Failed to open print dialog.');
+    } finally {
+      setActionMessage('');
+    }
+  };
+
+  const handlePrintSingle = async (student) => {
+    if (!student) return;
+    const cardEl = document.getElementById(`admit-card-staging-${student._id}`) ||
+                   document.getElementById('admit-card-preview-modal-card');
+
+    if (!cardEl) {
+      alert('Admit card element not found.');
+      return;
+    }
+
+    const safeName = (student.name || 'Student').replace(/\s+/g, '_');
+    const safeRoll = student.rollNumber || 'Roll';
+    setActionMessage(`Opening Print for ${student.name}...`);
+
+    try {
+      await printElement(cardEl, `Admit_Card_${safeRoll}_${safeName}`);
+    } catch (err) {
+      console.error('Print error:', err);
+      setActionMessage('Failed to open print dialog.');
+    } finally {
+      setActionMessage('');
+    }
+  };
+
+  const openReportCardEditor = (student, examName = reportCardSelectedExam) => {
+    setEditingReportCardStudent(student);
+    setReportCardDraft(getDefaultReportCard(student, examName));
+  };
+
+  const openReportCardPreview = (student, examName = reportCardSelectedExam) => {
+    setPreviewReportCardStudent(student);
+    setPreviewReportCardData(getDefaultReportCard(student, examName));
+  };
+
+  const closeReportCardEditor = () => {
+    setEditingReportCardStudent(null);
+    setReportCardDraft(null);
+  };
+
+  const saveReportCard = async () => {
+    if (!editingReportCardStudent || !reportCardDraft) return;
+    setIsSavingReportCard(true);
+    try {
+      const res = await axios.put(`/students/${editingReportCardStudent._id}`, {
+        reportCard: reportCardDraft
+      });
+      setData(prev => (prev || []).map(s => s._id === res.data._id ? res.data : s));
+      if (selectedStudent && selectedStudent._id === res.data._id) {
+        setSelectedStudent(res.data);
+      }
+      setActionMessage(`Report card saved successfully for ${res.data.name}!`);
+      setTimeout(() => setActionMessage(''), 4000);
+      closeReportCardEditor();
+    } catch (err) {
+      console.error('Error saving report card:', err);
+      setActionMessage('Failed to save report card. Please try again.');
+    } finally {
+      setIsSavingReportCard(false);
+    }
+  };
+
+  const getReportCardStudents = () => {
+    return (data || []).filter((student) => {
+      const classMatch = reportCardFilterClass === 'All' ? true : isClassMatch(student.class, reportCardFilterClass);
+      const searchMatch = reportCardSearch
+        ? (student.name || '').toLowerCase().includes(reportCardSearch.toLowerCase()) ||
+          (student.rollNumber || '').toLowerCase().includes(reportCardSearch.toLowerCase())
+        : true;
+      return classMatch && searchMatch;
+    });
+  };
+
+  const handlePrintSingleReportCard = async (student, examName = reportCardSelectedExam) => {
+    if (!student) return;
+    const cardEl = document.getElementById('report-card-editor-card') ||
+                   document.getElementById('report-card-preview-modal-card') ||
+                   document.getElementById(`report-card-staging-${student._id}`);
+
+    if (!cardEl) {
+      alert('Report card element not found.');
+      return;
+    }
+
+    const safeName = (student.name || 'Student').replace(/\s+/g, '_');
+    const safeRoll = student.rollNumber || 'Roll';
+    const safeExam = (examName || reportCardSelectedExam || 'Report_Card').replace(/\s+/g, '_');
+    setActionMessage(`Opening Print / Save as PDF for ${student.name} (${examName || reportCardSelectedExam})...`);
+
+    try {
+      await printElement(cardEl, `Report_Card_${safeExam}_${safeRoll}_${safeName}`);
+    } catch (err) {
+      console.error('Print error:', err);
+      setActionMessage('Failed to open print dialog.');
+    } finally {
+      setActionMessage('');
+    }
+  };
+
+  const handlePrintAllReportCards = async () => {
+    const studentsToPrint = getReportCardStudents();
+    if (studentsToPrint.length === 0) {
+      alert('No students found for this class filter.');
+      return;
+    }
+
+    const container = batchReportCardRef.current;
+    if (!container) {
+      alert('Print container not ready. Please try again.');
+      return;
+    }
+
+    const safeClass = reportCardFilterClass === 'All' ? 'All_Classes' : reportCardFilterClass.replace(/\s+/g, '_');
+    const safeExam = (reportCardSelectedExam || 'Examination').replace(/\s+/g, '_');
+    setActionMessage(`Opening Print / Save as PDF for ${studentsToPrint.length} ${reportCardSelectedExam} Report Cards...`);
+
+    try {
+      await printElement(container, `HNP_${safeExam}_Report_Cards_${safeClass}`);
+    } catch (err) {
+      console.error('Print error:', err);
+      setActionMessage('Failed to open print dialog.');
+    } finally {
+      setActionMessage('');
+    }
+  };
+
   const fetchData = async (endpoint) => {
     if (endpoint === 'students') return fetchStudents();
     if (endpoint === 'admitcard') return fetchStudents(); // Need student list for admit cards
+    if (endpoint === 'reportcards') return fetchStudents(); // Need student list for report cards
     setLoading(true);
     try {
       const res = await axios.get(`/${endpoint}`);
@@ -396,11 +596,13 @@ const AdminDashboard = () => {
             { id: 'admissions', icon: FileText, label: 'Admissions' },
             { id: 'contacts', icon: MessageSquare, label: 'Messages' },
             { id: 'admitcard', icon: Printer, label: 'Admit Card' },
+            { id: 'reportcards', icon: Award, label: 'Report Cards' },
           ].map(tab => (
             <button
               key={tab.id}
+              id={`admin-tab-${tab.id}`}
               onClick={() => handleTabChange(tab.id)}
-              className={`w-full flex items-center px-6 py-4 text-left transition-colors ${activeTab === tab.id ? 'bg-blue-600 border-l-4 border-white' : 'hover:bg-slate-800'}`}
+              className={`w-full flex items-center px-6 py-4 text-left transition-colors cursor-pointer ${activeTab === tab.id ? 'bg-blue-600 border-l-4 border-white' : 'hover:bg-slate-800'}`}
             >
               <tab.icon className="h-5 w-5 mr-3" />
               {tab.label}
@@ -746,13 +948,25 @@ const AdminDashboard = () => {
                 />
                 <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
               </div>
-              <button
-                type="button"
-                onClick={openStudentForm}
-                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
-              >
-                <Plus className="w-4 h-4 mr-2" /> ADD NEW
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAdmitCardFilterClass(selectedClassFilter);
+                    setActiveTab('admitcard');
+                  }}
+                  className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 shadow-sm transition-colors"
+                >
+                  <Printer className="w-4 h-4 mr-2" /> Admit Cards (Print / Save)
+                </button>
+                <button
+                  type="button"
+                  onClick={openStudentForm}
+                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 shadow-sm"
+                >
+                  <Plus className="w-4 h-4 mr-2" /> ADD NEW
+                </button>
+              </div>
             </div>
             
             <div className="flex flex-col gap-3">
@@ -772,7 +986,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {!selectedStudent && <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        {!selectedStudent && !['admitcard', 'reportcards'].includes(activeTab) && <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-slate-500">Loading...</div>
           ) : (
@@ -819,6 +1033,24 @@ const AdminDashboard = () => {
                           <BookOpen className="w-5 h-5 inline" />
                         </button>
                       )}
+                      {activeTab === 'students' && (
+                        <button 
+                          onClick={() => setPreviewAdmitCardStudent(item)} 
+                          className="text-indigo-600 hover:text-indigo-900 p-2 mr-2" 
+                          title="Print / Save Admit Card"
+                        >
+                          <Printer className="w-5 h-5 inline" />
+                        </button>
+                      )}
+                      {activeTab === 'students' && (
+                        <button 
+                          onClick={() => openReportCardEditor(item)} 
+                          className="text-amber-600 hover:text-amber-900 p-2 mr-2" 
+                          title="Edit / View Report Card"
+                        >
+                          <Award className="w-5 h-5 inline" />
+                        </button>
+                      )}
                       {['notices', 'teachers', 'gallery', 'students'].includes(activeTab) && (
                         <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-900 p-2 mr-2" title="Edit">
                           <Edit2 className="w-5 h-5 inline" />
@@ -843,169 +1075,916 @@ const AdminDashboard = () => {
         {/* Admit Card Tab */}
         {!selectedStudent && activeTab === 'admitcard' && (
           <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="text-lg font-bold mb-4 flex items-center text-slate-800">
-                <Calendar className="w-5 h-5 mr-2 text-blue-600" /> Exam Routine Builder
-              </h3>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Select Class</label>
-                  <select 
-                    className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800"
-                    value={admitCardClass}
-                    onChange={(e) => setAdmitCardClass(e.target.value)}
-                  >
-                    {['Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map(cls => (
-                      <option key={cls} value={cls}>{cls}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-1">Exam Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Annual Examination 2024"
-                    className="w-full border border-slate-300 rounded-lg p-2.5"
-                    value={admitCardExamName}
-                    onChange={(e) => setAdmitCardExamName(e.target.value)}
-                  />
-                </div>
-              </div>
+            {/* Hero Card for 1-Click Print / Save Admit Cards */}
+            <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-slate-900 text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+              <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div className="max-w-2xl">
+                  <div className="inline-flex items-center gap-2 bg-blue-500/20 text-blue-200 border border-blue-400/30 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase mb-3">
+                    <Printer className="w-3.5 h-3.5" /> Examination Hub
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                    Print / Save All Student Admit Cards
+                  </h2>
+                  <p className="mt-2 text-sm sm:text-base text-blue-100/90 leading-relaxed">
+                    Print or save official school admit cards as PDF for all students in one click. 
+                    Includes student profile, roll number, class routine schedule, instructions, and official signatures formatted cleanly for A4 printing.
+                  </p>
 
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-slate-700 mb-3">Exam Schedule</label>
-                <div className="space-y-3">
-                  {admitCardRoutine.map((item, index) => (
-                    <div key={index} className="flex flex-col md:flex-row gap-3 items-start md:items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
-                      <div className="flex-1 w-full">
-                        <input 
-                          placeholder="Subject" 
-                          className="w-full border border-slate-300 rounded p-2 text-sm"
-                          value={item.subject}
-                          onChange={(e) => handleRoutineChange(index, 'subject', e.target.value)}
-                        />
-                      </div>
-                      <div className="flex-1 w-full">
-                        <input 
-                          placeholder="Date (e.g. 15-05-2024)" 
-                          className="w-full border border-slate-300 rounded p-2 text-sm"
-                          value={item.date}
-                          onChange={(e) => handleRoutineChange(index, 'date', e.target.value)}
-                        />
-                      </div>
-                      <div className="flex-1 w-full">
-                        <input 
-                          placeholder="Time (e.g. 10:30 AM)" 
-                          className="w-full border border-slate-300 rounded p-2 text-sm"
-                          value={item.time}
-                          onChange={(e) => handleRoutineChange(index, 'time', e.target.value)}
-                        />
-                      </div>
-                      <button 
-                        onClick={() => removeRoutineRow(index)}
-                        className="text-red-500 hover:text-red-700 p-2"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                  {/* Summary Badges */}
+                  <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-white/10 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span className="text-blue-200">Total Students:</span>
+                      <span className="font-bold text-white">{data.length || 0}</span>
                     </div>
-                  ))}
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                      <span className="text-blue-200">Active Routines:</span>
+                      <span className="font-bold text-white">{activeRoutines.length} Classes</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                      <span className="text-blue-200">Selected for Print / Save:</span>
+                      <span className="font-bold text-emerald-300">{getAdmitCardStudents().length} Cards</span>
+                    </div>
+                  </div>
                 </div>
-                <button 
-                  onClick={addRoutineRow}
-                  className="mt-4 inline-flex items-center text-sm font-bold text-blue-600 hover:text-blue-800"
-                >
-                  <Plus className="w-4 h-4 mr-1" /> Add Subject
-                </button>
-              </div>
 
-              <div className="flex flex-wrap gap-4 pt-4 border-t border-slate-100">
-                <button 
-                  onClick={saveExamRoutine}
-                  className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 font-bold flex items-center shadow-sm"
-                >
-                  Save Routine
-                </button>
+                {/* Main 1-Click Action Button: Print / Save All as PDF */}
+                <div className="flex flex-col gap-2 shrink-0">
+                  <button
+                    onClick={handlePrintAll}
+                    disabled={getAdmitCardStudents().length === 0}
+                    className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:scale-98 transition-all text-white font-extrabold shadow-lg shadow-emerald-500/30 text-base disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
+                  >
+                    <Printer className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                    <div className="text-left">
+                      <div className="leading-tight">Print / Save All as PDF</div>
+                      <div className="text-[11px] font-normal text-emerald-100">
+                        1-Click Ready • {getAdmitCardStudents().length} Student Cards
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Active Routines List */}
+            {/* Sub-Tab Navigation: Student Admit Cards vs Routine Builder */}
+            <div className="flex border-b border-slate-200 bg-white rounded-t-xl px-4 pt-2">
+              <button
+                onClick={() => setActiveAdmitCardSubtab('students')}
+                className={`flex items-center gap-2 py-3 px-5 border-b-2 font-bold text-sm transition-colors cursor-pointer ${
+                  activeAdmitCardSubtab === 'students'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Users className="w-4 h-4" /> Student Admit Cards ({getAdmitCardStudents().length})
+              </button>
+              <button
+                onClick={() => setActiveAdmitCardSubtab('routine')}
+                className={`flex items-center gap-2 py-3 px-5 border-b-2 font-bold text-sm transition-colors cursor-pointer ${
+                  activeAdmitCardSubtab === 'routine'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Calendar className="w-4 h-4" /> Exam Routine Builder ({activeRoutines.length})
+              </button>
+            </div>
+
+            {/* Subtab 1: Student Admit Cards */}
+            {activeAdmitCardSubtab === 'students' && (
+              <div className="space-y-6">
+                {/* Filters Bar */}
+                <div className="bg-white p-6 rounded-b-xl rounded-t-none shadow-sm border border-slate-200 -mt-6">
+                  <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-4">
+                    <div className="relative w-full md:max-w-md">
+                      <input
+                        type="text"
+                        placeholder="Search student name or roll number..."
+                        value={admitCardSearch}
+                        onChange={(e) => setAdmitCardSearch(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50/50"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                      <span>Quick Filter:</span>
+                      <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-200">
+                        {admitCardFilterClass === 'All' ? 'All Classes' : admitCardFilterClass} ({getAdmitCardStudents().length})
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Class Pills */}
+                  <div className="flex flex-wrap gap-1.5 items-center pt-2 border-t border-slate-100">
+                    <span className="text-xs font-bold text-slate-600 mr-2">Filter Class:</span>
+                    {['All', 'Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map((cls) => {
+                      const count = (data || []).filter(s => cls === 'All' ? true : isClassMatch(s.class, cls)).length;
+                      return (
+                        <button
+                          key={cls}
+                          onClick={() => setAdmitCardFilterClass(cls)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                            admitCardFilterClass === cls
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                          }`}
+                        >
+                          {cls === 'All' ? 'All Classes' : cls} <span className="opacity-75 font-normal">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Students Table */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                    <h3 className="font-bold text-slate-800 text-sm flex items-center">
+                      <Users className="w-4 h-4 mr-2 text-blue-600" />
+                      Eligible Students for Admit Cards ({getAdmitCardStudents().length})
+                    </h3>
+                    <button
+                      onClick={handlePrintAll}
+                      disabled={getAdmitCardStudents().length === 0}
+                      className="inline-flex items-center text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Printer className="w-3.5 h-3.5 mr-1" /> Print / Save All ({getAdmitCardStudents().length})
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-slate-200">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Class &amp; Roll</th>
+                          <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Exam Schedule</th>
+                          <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-slate-100">
+                        {getAdmitCardStudents().map((student) => {
+                          const routine = getStudentRoutine(student);
+                          return (
+                            <tr key={student._id} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="h-10 w-10 flex-shrink-0 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden mr-3">
+                                    {student.photo ? (
+                                      <img src={assetUrl(student.photo)} alt="" className="h-full w-full object-cover" crossOrigin="anonymous" />
+                                    ) : (
+                                      <span className="font-bold text-slate-500 text-xs">{student.name?.charAt(0) || 'S'}</span>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-bold text-slate-900">{student.name}</div>
+                                    <div className="text-xs text-slate-500">Father: {student.parentName || '--'}</div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-bold text-slate-900">{student.class}</div>
+                                <div className="text-xs font-mono text-slate-500 font-semibold">{student.rollNumber}</div>
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {routine ? (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                                    {routine.examName} ({routine.routine?.length || 0} subjects)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5"></span>
+                                    Routine Pending
+                                  </span>
+                                )}
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button
+                                  onClick={() => setPreviewAdmitCardStudent(student)}
+                                  className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold mr-2 transition-colors inline-flex items-center cursor-pointer"
+                                  title="Preview Admit Card"
+                                >
+                                  <Eye className="w-3.5 h-3.5 mr-1" /> Preview
+                                </button>
+                                <button
+                                  onClick={() => handlePrintSingle(student)}
+                                  className="text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors inline-flex items-center cursor-pointer"
+                                  title="Print / Save as PDF"
+                                >
+                                  <Printer className="w-3.5 h-3.5 mr-1" /> Print / Save
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+
+                        {getAdmitCardStudents().length === 0 && (
+                          <tr>
+                            <td colSpan="4" className="px-6 py-12 text-center text-slate-500">
+                              No students found for this class filter or search query.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Subtab 2: Exam Routine Builder & Active Routines */}
+            {activeAdmitCardSubtab === 'routine' && (
+              <div className="space-y-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                  <h3 className="text-lg font-bold mb-4 flex items-center text-slate-800">
+                    <Calendar className="w-5 h-5 mr-2 text-blue-600" /> Exam Routine Builder
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Select Class</label>
+                      <select 
+                        className="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800"
+                        value={admitCardClass}
+                        onChange={(e) => setAdmitCardClass(e.target.value)}
+                      >
+                        {['Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map(cls => (
+                          <option key={cls} value={cls}>{cls}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-1">Exam Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Annual Examination 2024"
+                        className="w-full border border-slate-300 rounded-lg p-2.5"
+                        value={admitCardExamName}
+                        onChange={(e) => setAdmitCardExamName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="block text-sm font-bold text-slate-700 mb-3">Exam Schedule</label>
+                    <div className="space-y-3">
+                      {admitCardRoutine.map((item, index) => (
+                        <div key={index} className="flex flex-col md:flex-row gap-3 items-start md:items-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+                          <div className="flex-1 w-full">
+                            <input 
+                              placeholder="Subject" 
+                              className="w-full border border-slate-300 rounded p-2 text-sm"
+                              value={item.subject}
+                              onChange={(e) => handleRoutineChange(index, 'subject', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex-1 w-full">
+                            <input 
+                              placeholder="Date (e.g. 15-05-2024)" 
+                              className="w-full border border-slate-300 rounded p-2 text-sm"
+                              value={item.date}
+                              onChange={(e) => handleRoutineChange(index, 'date', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex-1 w-full">
+                            <input 
+                              placeholder="Time (e.g. 10:30 AM)" 
+                              className="w-full border border-slate-300 rounded p-2 text-sm"
+                              value={item.time}
+                              onChange={(e) => handleRoutineChange(index, 'time', e.target.value)}
+                            />
+                          </div>
+                          <button 
+                            onClick={() => removeRoutineRow(index)}
+                            className="text-red-500 hover:text-red-700 p-2 cursor-pointer"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button 
+                      onClick={addRoutineRow}
+                      className="mt-4 inline-flex items-center text-sm font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Add Subject
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-4 pt-4 border-t border-slate-100">
+                    <button 
+                      onClick={saveExamRoutine}
+                      className="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 font-bold flex items-center shadow-sm cursor-pointer"
+                    >
+                      Save Routine
+                    </button>
+                  </div>
+                </div>
+
+                {/* Active Routines List */}
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                  <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
+                    <Calendar className="w-5 h-5 mr-2 text-blue-600" /> Active Exam Routines
+                  </h3>
+                  
+                  {activeRoutines.length > 0 ? (
+                    <div className="overflow-hidden border border-slate-100 rounded-lg">
+                      <table className="min-w-full divide-y divide-slate-200">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Class</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Exam Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Subjects</th>
+                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-slate-100">
+                          {activeRoutines.map((routine) => (
+                            <tr key={routine._id} className="hover:bg-slate-50">
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{routine.class}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{routine.examName}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{routine.routine.length} Subjects</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <button 
+                                  onClick={() => deleteExamRoutine(routine._id)}
+                                  className="text-red-600 hover:text-red-900 font-bold ml-4 cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                      <p className="text-slate-500">No active exam routines found.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Report Cards Tab */}
+        {!selectedStudent && activeTab === 'reportcards' && (
+          <div className="space-y-6">
+            {/* Hero Card for 1-Click Print / Save Report Cards */}
+            <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden border border-amber-500/30">
+              <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div className="max-w-2xl">
+                  <div className="inline-flex items-center gap-2 bg-amber-500/20 text-amber-300 border border-amber-400/30 px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase mb-3">
+                    <Award className="w-3.5 h-3.5" /> Official Academic Evaluation
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                    Student Report Cards Management
+                  </h2>
+                  <p className="mt-2 text-sm sm:text-base text-slate-300 leading-relaxed">
+                    View, edit, and print official Half Yearly &amp; Annual Examination Report Cards. 
+                    Includes authentic Navy &amp; Gold Laurel border design, student profile, subject-wise marks, co-scholastic grading, teacher's remarks, and official school seal.
+                  </p>
+
+                  {/* Summary Badges */}
+                  <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-white/10 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                      <span className="text-slate-300">Exam:</span>
+                      <span className="font-extrabold text-amber-300">{reportCardSelectedExam}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span className="text-slate-300">Total Students:</span>
+                      <span className="font-bold text-white">{data.length || 0}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                      <span className="text-slate-300">Selected Class:</span>
+                      <span className="font-bold text-white">{reportCardFilterClass === 'All' ? 'All Classes' : reportCardFilterClass}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-purple-400"></span>
+                      <span className="text-slate-300">Ready to Print:</span>
+                      <span className="font-bold text-emerald-300">{getReportCardStudents().length} Cards</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Main 1-Click Action Button: Print / Save All Report Cards as PDF */}
+                <div className="flex flex-col gap-2 shrink-0">
+                  <button
+                    onClick={handlePrintAllReportCards}
+                    disabled={getReportCardStudents().length === 0}
+                    className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-98 transition-all text-slate-950 font-black shadow-lg shadow-amber-500/30 text-base disabled:opacity-50 disabled:cursor-not-allowed group cursor-pointer"
+                  >
+                    <Printer className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                    <div className="text-left">
+                      <div className="leading-tight">Print / Save All as PDF</div>
+                      <div className="text-[11px] font-semibold text-slate-900">
+                        1-Click Ready • {getReportCardStudents().length} {reportCardSelectedExam} Cards
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Exam Selector Bar */}
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+                  <Award className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Active Examination</span>
+                  <h3 className="text-base font-black text-slate-900">{reportCardSelectedExam}</h3>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-500 mr-1">Switch Exam Term:</span>
+                {['Half Yearly Examination', 'Annual Examination', 'Periodic Test 1', 'Periodic Test 2'].map((examName) => (
+                  <button
+                    key={examName}
+                    onClick={() => setReportCardSelectedExam(examName)}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      reportCardSelectedExam === examName
+                        ? 'bg-amber-500 text-slate-950 font-extrabold shadow-sm ring-2 ring-amber-400'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {examName}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Filters Bar */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-blue-600" /> Active Exam Routines
-              </h3>
-              
-              {activeRoutines.length > 0 ? (
-                <div className="overflow-hidden border border-slate-100 rounded-lg">
-                  <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Class</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Exam Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Subjects</th>
-                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-slate-100">
-                      {activeRoutines.map((routine) => (
-                        <tr key={routine._id} className="hover:bg-slate-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-900">{routine.class}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{routine.examName}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{routine.routine.length} Subjects</td>
+              <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-4">
+                <div className="relative w-full md:max-w-md">
+                  <input
+                    type="text"
+                    placeholder="Search student name or roll number..."
+                    value={reportCardSearch}
+                    onChange={(e) => setReportCardSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-slate-50/50"
+                  />
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                </div>
+
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                  <span>Class:</span>
+                  <span className="bg-amber-50 text-amber-800 px-3 py-1 rounded-full border border-amber-200">
+                    {reportCardFilterClass === 'All' ? 'All Classes' : reportCardFilterClass} ({getReportCardStudents().length})
+                  </span>
+                </div>
+              </div>
+
+              {/* Class Pills */}
+              <div className="flex flex-wrap gap-1.5 items-center pt-2 border-t border-slate-100">
+                <span className="text-xs font-bold text-slate-600 mr-2">Filter Class:</span>
+                {['All', 'Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map((cls) => {
+                  const count = (data || []).filter(s => cls === 'All' ? true : isClassMatch(s.class, cls)).length;
+                  return (
+                    <button
+                      key={cls}
+                      onClick={() => setReportCardFilterClass(cls)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        reportCardFilterClass === cls
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      {cls === 'All' ? 'All Classes' : cls} <span className="opacity-75 font-normal">({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Students Report Cards Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 className="font-bold text-slate-800 text-sm flex items-center">
+                  <Award className="w-4 h-4 mr-2 text-amber-600" />
+                  Students Report Cards - {reportCardSelectedExam} ({getReportCardStudents().length})
+                </h3>
+                <button
+                  onClick={handlePrintAllReportCards}
+                  disabled={getReportCardStudents().length === 0}
+                  className="inline-flex items-center text-xs font-bold text-amber-700 hover:text-amber-900 hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Printer className="w-3.5 h-3.5 mr-1" /> Print / Save All ({getReportCardStudents().length})
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Student</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Class &amp; Roll</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Session &amp; Exam</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Performance</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-100">
+                    {getReportCardStudents().map((student) => {
+                      const studentExamRC = getDefaultReportCard(student, reportCardSelectedExam);
+                      const totalObt = studentExamRC.totalObtained;
+                      const totalMax = studentExamRC.totalMaxMarks || 640;
+                      const percentage = studentExamRC.percentage;
+                      const grade = studentExamRC.overallGrade;
+                      const hasMarks = totalObt !== '' && totalObt !== null && totalObt !== undefined;
+
+                      return (
+                        <tr key={student._id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-10 w-10 flex-shrink-0 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden mr-3">
+                                {student.photo ? (
+                                  <img src={assetUrl(student.photo)} alt="" className="h-full w-full object-cover" crossOrigin="anonymous" />
+                                ) : (
+                                  <span className="font-bold text-slate-500 text-xs">{student.name?.charAt(0) || 'S'}</span>
+                                )}
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-slate-900">{student.name}</div>
+                                <div className="text-xs text-slate-500">Father: {student.parentName || '--'}</div>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-bold text-slate-900">{student.class}</div>
+                            <div className="text-xs font-mono text-slate-500 font-semibold">{student.rollNumber}</div>
+                          </td>
+
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-xs font-bold text-slate-800">{reportCardSelectedExam}</div>
+                            <div className="text-[11px] text-amber-700 font-medium">Session: {studentExamRC.session || '2026-2027'}</div>
+                          </td>
+
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {hasMarks ? (
+                              <div>
+                                <div className="text-xs font-bold text-slate-900">{totalObt} / {totalMax} <span className="text-emerald-700 font-extrabold ml-1">({percentage})</span></div>
+                                <div className="text-[11px] font-semibold text-blue-700">Grade: {grade} • {studentExamRC.finalResult || 'PASS'}</div>
+                              </div>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                Ready to Fill (Click Edit)
+                              </span>
+                            )}
+                          </td>
+
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button 
-                              onClick={() => deleteExamRoutine(routine._id)}
-                              className="text-red-600 hover:text-red-900 font-bold ml-4"
+                            <button
+                              onClick={() => openReportCardEditor(student, reportCardSelectedExam)}
+                              className="text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg text-xs font-bold mr-2 transition-colors inline-flex items-center cursor-pointer"
+                              title={`Edit ${reportCardSelectedExam} Report Card`}
                             >
-                              Delete
+                              <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                            </button>
+                            <button
+                              onClick={() => openReportCardPreview(student, reportCardSelectedExam)}
+                              className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold mr-2 transition-colors inline-flex items-center cursor-pointer"
+                              title={`Preview ${reportCardSelectedExam} Report Card`}
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1" /> Preview
+                            </button>
+                            <button
+                              onClick={() => handlePrintSingleReportCard(student, reportCardSelectedExam)}
+                              className="text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors inline-flex items-center cursor-pointer"
+                              title="Print / Save as PDF"
+                            >
+                              <Printer className="w-3.5 h-3.5 mr-1" /> Print / Save
                             </button>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-300">
-                  <p className="text-slate-500">No active exam routines found.</p>
-                </div>
-              )}
+                      );
+                    })}
+
+                    {getReportCardStudents().length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
+                          No students found for this class filter or search query.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          .admit-cards-container, .admit-cards-container * {
-            visibility: visible;
-          }
-          .admit-cards-container {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          .admit-card-wrapper {
-            margin: 0 !important;
-            padding: 40px !important;
-            border: 3px solid black !important;
-            box-shadow: none !important;
-            page-break-after: always !important;
-            width: 100% !important;
-            max-width: none !important;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-        .mix-multiply {
-          mix-blend-mode: multiply;
-        }
-      `}</style>
+      {/* Off-screen Staging Container for Print / Save as PDF */}
+      <div
+        ref={batchContainerRef}
+        id="admit-cards-batch-container"
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          width: '800px',
+          height: 0,
+          overflow: 'hidden',
+          zIndex: -100,
+          pointerEvents: 'none',
+          opacity: 0
+        }}
+      >
+        {getAdmitCardStudents().map((student) => {
+          const routine = getStudentRoutine(student);
+          return (
+            <div 
+              key={student._id} 
+              className="admit-card-page-wrapper mb-8"
+              id={`admit-card-wrapper-${student._id}`}
+            >
+              <AdmitCard
+                id={`admit-card-staging-${student._id}`}
+                student={student}
+                examRoutine={routine}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Single Admit Card Preview Modal */}
+      {previewAdmitCardStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[95vh] my-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">Admit Card Preview</h3>
+                <p className="text-xs text-slate-500">
+                  {previewAdmitCardStudent.name} • Class: {previewAdmitCardStudent.class} • Roll: {previewAdmitCardStudent.rollNumber}
+                </p>
+              </div>
+              <button 
+                onClick={() => setPreviewAdmitCardStudent(null)} 
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: Rendered Admit Card */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-100 flex justify-center">
+              <div id="admit-card-preview-modal-content">
+                <AdmitCard
+                  id="admit-card-preview-modal-card"
+                  student={previewAdmitCardStudent}
+                  examRoutine={getStudentRoutine(previewAdmitCardStudent)}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer: Print / Save as PDF */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3">
+              <button
+                onClick={() => setPreviewAdmitCardStudent(null)}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 transition-colors text-sm cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => handlePrintSingle(previewAdmitCardStudent)}
+                className="inline-flex items-center px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-colors cursor-pointer"
+              >
+                <Printer className="w-4 h-4 mr-2" /> Print / Save as PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Off-screen Staging Container for Batch Report Cards Print */}
+      <div
+        ref={batchReportCardRef}
+        id="report-cards-batch-container"
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          width: '800px',
+          height: 0,
+          overflow: 'hidden',
+          zIndex: -100,
+          pointerEvents: 'none',
+          opacity: 0
+        }}
+      >
+        {getReportCardStudents().map((student) => {
+          const examRc = getDefaultReportCard(student, reportCardSelectedExam);
+          return (
+            <div 
+              key={`${student._id}-${reportCardSelectedExam}`} 
+              className="report-card-page-wrapper mb-8"
+              id={`report-card-wrapper-${student._id}`}
+            >
+              <ReportCard
+                id={`report-card-staging-${student._id}`}
+                student={student}
+                reportCardData={examRc}
+                isEditable={false}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Report Card Live Interactive Editor Modal */}
+      {editingReportCardStudent && reportCardDraft && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full overflow-hidden flex flex-col max-h-[96vh] my-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-bold text-slate-800">Edit Student Report Card</h3>
+                  <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Interactive Live Editor
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {editingReportCardStudent.name} • Class: {editingReportCardStudent.class} • Roll: {editingReportCardStudent.rollNumber}
+                </p>
+              </div>
+              <button 
+                onClick={closeReportCardEditor} 
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Helper Banner with Exam Term Selector */}
+            <div className="bg-blue-50 border-b border-blue-100 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs text-blue-900">
+              <div className="flex items-center gap-2">
+                <span className="font-bold">Exam Term:</span>
+                <select
+                  value={reportCardDraft.examType || reportCardSelectedExam}
+                  onChange={(e) => {
+                    const newExam = e.target.value;
+                    const existingForExam = getDefaultReportCard(editingReportCardStudent, newExam);
+                    setReportCardDraft({
+                      ...existingForExam,
+                      examType: newExam,
+                      examTitle: newExam.toUpperCase().includes('REPORT') ? newExam.toUpperCase() : `${newExam.toUpperCase()} REPORT CARD`
+                    });
+                  }}
+                  className="px-2.5 py-1 bg-white border border-blue-300 rounded-md font-bold text-xs text-blue-950 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="Half Yearly Examination">Half Yearly Examination</option>
+                  <option value="Annual Examination">Annual Examination</option>
+                  <option value="Periodic Test 1">Periodic Test 1</option>
+                  <option value="Periodic Test 2">Periodic Test 2</option>
+                </select>
+                <span className="text-[11px] text-blue-700 italic ml-2 hidden sm:inline">
+                  (Auto-calculates totals &amp; percentages in real time)
+                </span>
+              </div>
+              <span className="font-bold text-blue-900">
+                {reportCardDraft.percentage ? `Score: ${reportCardDraft.percentage}` : ''}
+              </span>
+            </div>
+
+            {/* Modal Body: Interactive ReportCard Component */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-100 flex justify-center">
+              <ReportCard
+                student={editingReportCardStudent}
+                reportCardData={reportCardDraft}
+                isEditable={true}
+                onChange={setReportCardDraft}
+                id="report-card-editor-card"
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap justify-between items-center gap-3">
+              <button
+                type="button"
+                onClick={closeReportCardEditor}
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 transition-colors text-sm cursor-pointer"
+              >
+                Cancel
+              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handlePrintSingleReportCard(editingReportCardStudent, reportCardDraft.examType || reportCardDraft.examTitle || reportCardSelectedExam)}
+                  className="inline-flex items-center px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm shadow-sm transition-colors cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 mr-2" /> Print / Save as PDF
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingReportCard}
+                  onClick={saveReportCard}
+                  className="inline-flex items-center px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSavingReportCard ? (
+                    <>Saving Report Card...</>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" /> Save Report Card
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Card Preview Modal */}
+      {previewReportCardStudent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full overflow-hidden flex flex-col max-h-[96vh] my-auto">
+            {/* Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-600" />
+                  {previewReportCardData?.examType || reportCardSelectedExam} Report Card Preview
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {previewReportCardStudent.name} • Class: {previewReportCardStudent.class} • Roll: {previewReportCardStudent.rollNumber}
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setPreviewReportCardStudent(null);
+                  setPreviewReportCardData(null);
+                }} 
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-100 flex justify-center">
+              <ReportCard
+                student={previewReportCardStudent}
+                reportCardData={previewReportCardData || getDefaultReportCard(previewReportCardStudent, reportCardSelectedExam)}
+                isEditable={false}
+                id="report-card-preview-modal-card"
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center gap-3">
+              <button
+                onClick={() => {
+                  setPreviewReportCardStudent(null);
+                  setPreviewReportCardData(null);
+                }} 
+                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 font-bold hover:bg-slate-100 transition-colors text-sm cursor-pointer"
+              >
+                Close
+              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const st = previewReportCardStudent;
+                    const ex = previewReportCardData?.examType || reportCardSelectedExam;
+                    setPreviewReportCardStudent(null);
+                    setPreviewReportCardData(null);
+                    openReportCardEditor(st, ex);
+                  }}
+                  className="inline-flex items-center px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-sm transition-colors cursor-pointer"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" /> Edit Report Card
+                </button>
+                <button
+                  onClick={() => handlePrintSingleReportCard(previewReportCardStudent, previewReportCardData?.examType || reportCardSelectedExam)}
+                  className="inline-flex items-center px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-colors cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 mr-2" /> Print / Save as PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
 
       {/* View Details Modal */}

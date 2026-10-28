@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import axios from '../../api/axios';
 import { assetUrl } from '../../config/api';
 import { motion } from 'framer-motion';
-import { User, Book, ClipboardList, LogOut, X, FileText, Download, Printer } from 'lucide-react';
+import { User, Book, ClipboardList, LogOut, X, FileText, Download, Printer, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { printElement } from '../../utils/printHelper';
+import ReportCard, { getAllStudentReportCards, getDefaultReportCard } from '../../components/ReportCard';
 
 const StudentDashboard = () => {
   const [profile, setProfile] = useState(null);
@@ -11,6 +13,8 @@ const StudentDashboard = () => {
   const [resultModalOpen, setResultModalOpen] = useState(false);
   const [topperModalOpen, setTopperModalOpen] = useState(false);
   const [admitCardModalOpen, setAdmitCardModalOpen] = useState(false);
+  const [reportCardModalOpen, setReportCardModalOpen] = useState(false);
+  const [selectedReportCard, setSelectedReportCard] = useState(null);
   const [examRoutine, setExamRoutine] = useState(null);
   const navigate = useNavigate();
 
@@ -45,7 +49,36 @@ const StudentDashboard = () => {
   }, [profile?.class]);
 
   const handlePrint = () => {
-    window.print();
+    const cardEl = document.getElementById('printable-admit-card');
+    if (cardEl) {
+      const safeName = (profile?.name || 'Student').replace(/\s+/g, '_');
+      printElement(cardEl, `Admit_Card_${profile?.rollNumber || ''}_${safeName}`);
+    } else {
+      window.print();
+    }
+  };
+
+  const handlePrintReportCard = async (targetRc) => {
+    const cardEl = document.getElementById('student-view-report-card') || document.getElementById('printable-report-card');
+    if (!cardEl) return;
+    const currentRc = targetRc || selectedReportCard;
+    const safeName = (profile?.name || 'Student').replace(/\s+/g, '_');
+    const safeRoll = profile?.rollNumber || 'Roll';
+    const safeExam = (currentRc?.examType || currentRc?.examName || 'Report_Card').replace(/\s+/g, '_');
+    await printElement(cardEl, `Report_Card_${safeExam}_${safeRoll}_${safeName}`);
+  };
+
+  const handleOpenReportCard = (rc) => {
+    setSelectedReportCard(rc);
+    setReportCardModalOpen(true);
+  };
+
+  const handlePrintSpecificReportCard = (rc) => {
+    setSelectedReportCard(rc);
+    setReportCardModalOpen(true);
+    setTimeout(() => {
+      handlePrintReportCard(rc);
+    }, 600);
   };
 
   const handleLogout = () => {
@@ -76,7 +109,7 @@ const StudentDashboard = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-slate-900">Student Dashboard</h1>
-            <button onClick={handleLogout} className="flex items-center text-red-600 hover:text-red-800 font-medium">
+            <button id="student-logout-btn" onClick={handleLogout} className="flex items-center text-red-600 hover:text-red-800 font-medium cursor-pointer">
                 <LogOut className="w-5 h-5 mr-2" /> Logout
             </button>
         </div>
@@ -114,7 +147,7 @@ const StudentDashboard = () => {
           </motion.div>
 
           <div className="md:col-span-2 space-y-8">
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex items-center">
                      <div className="bg-green-100 p-4 rounded-full mr-4">
                          <ClipboardList className="w-8 h-8 text-green-600" />
@@ -139,7 +172,7 @@ const StudentDashboard = () => {
                  
                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} 
                      onClick={() => examRoutine && setAdmitCardModalOpen(true)}
-                     className={`p-6 rounded-2xl shadow-sm border flex items-center transition-all ${examRoutine ? 'bg-white border-blue-200 cursor-pointer hover:bg-blue-50' : 'bg-slate-50 border-slate-200 opacity-75'}`}>
+                     className={`sm:col-span-2 p-6 rounded-2xl shadow-sm border flex items-center transition-all ${examRoutine ? 'bg-white border-blue-200 cursor-pointer hover:bg-blue-50' : 'bg-slate-50 border-slate-200 opacity-75'}`}>
                      <div className={`p-4 rounded-full mr-4 ${examRoutine ? 'bg-blue-100' : 'bg-slate-200'}`}>
                          <FileText className={`w-8 h-8 ${examRoutine ? 'text-blue-600' : 'text-slate-400'}`} />
                      </div>
@@ -152,7 +185,7 @@ const StudentDashboard = () => {
                           <div className="flex gap-3 mt-2">
                             <button onClick={(e) => { e.stopPropagation(); setAdmitCardModalOpen(true); }} className="text-blue-600 text-xs font-bold hover:underline">View Preview</button>
                             <button onClick={(e) => { e.stopPropagation(); setAdmitCardModalOpen(true); setTimeout(handlePrint, 500); }} className="text-emerald-600 text-xs font-bold hover:underline flex items-center">
-                              <Printer className="w-3 h-3 mr-1" /> Save as PDF
+                              <Printer className="w-3 h-3 mr-1" /> Print / Save as PDF
                             </button>
                           </div>
                         ) : (
@@ -161,6 +194,100 @@ const StudentDashboard = () => {
                      </div>
                  </motion.div>
              </div>
+
+             {/* Official Examination Report Cards Section */}
+             <motion.div 
+               initial={{ opacity: 0, y: 20 }} 
+               animate={{ opacity: 1, y: 0 }} 
+               transition={{ delay: 0.28 }}
+               className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"
+             >
+               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-2 mb-4">
+                 <div>
+                   <div className="flex items-center gap-2">
+                     <Award className="w-5 h-5 text-amber-600" />
+                     <h3 className="text-lg font-bold text-slate-800">Official Examination Report Cards</h3>
+                   </div>
+                   <p className="text-xs text-slate-500 mt-0.5">
+                     Download or print your authentic term-wise report cards with official school seal &amp; teacher remarks.
+                   </p>
+                 </div>
+                 <span className="bg-amber-50 text-amber-800 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 self-start sm:self-auto">
+                   Academic Session: 2026-2027
+                 </span>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 {getAllStudentReportCards(profile).map((rc, idx) => {
+                   const examName = rc.examType || rc.examName || 'Examination';
+                   const hasMarks = rc.totalObtained !== '' && rc.totalObtained !== null && rc.totalObtained !== undefined;
+                   const scorePct = rc.percentage || '';
+                   const grade = rc.overallGrade || '-';
+
+                   return (
+                     <div
+                       key={idx}
+                       onClick={() => handleOpenReportCard(rc)}
+                       className="border border-slate-200 hover:border-amber-400 rounded-xl p-4 transition-all hover:shadow-md cursor-pointer bg-gradient-to-br from-slate-50/50 to-amber-50/20 group relative overflow-hidden flex flex-col justify-between"
+                     >
+                       <div className="flex items-start justify-between gap-3">
+                         <div>
+                           <span className="inline-block bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider mb-1">
+                             {rc.session || '2026-2027'} Term
+                           </span>
+                           <h4 className="font-extrabold text-slate-800 text-base group-hover:text-amber-800 transition-colors">
+                             {examName}
+                           </h4>
+                         </div>
+                         <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                           <Award className="w-5 h-5" />
+                         </div>
+                       </div>
+
+                       <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                         <div>
+                           {hasMarks ? (
+                             <div>
+                               <span className="font-bold text-slate-900">{rc.totalObtained} / {rc.totalMaxMarks}</span>
+                               <span className="text-emerald-700 font-extrabold ml-1.5">({scorePct})</span>
+                               <div className="text-[11px] font-semibold text-blue-700 mt-0.5">
+                                 Grade: {grade} • {rc.finalResult || 'PASS'}
+                               </div>
+                             </div>
+                           ) : (
+                             <span className="inline-flex items-center text-[11px] font-medium text-slate-500 italic">
+                               Evaluation in progress
+                             </span>
+                           )}
+                         </div>
+
+                         <div className="flex items-center gap-2">
+                           <button
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handleOpenReportCard(rc);
+                             }}
+                             className="px-2.5 py-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                           >
+                             View Card &rarr;
+                           </button>
+                           <button
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               handlePrintSpecificReportCard(rc);
+                             }}
+                             className="inline-flex items-center px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
+                             title="Print / Save as PDF"
+                           >
+                             <Printer className="w-3.5 h-3.5 mr-1" /> Save &amp; Print
+                           </button>
+                         </div>
+                       </div>
+                     </div>
+                   );
+                 })}
+               </div>
+             </motion.div>
 
              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="text-xl font-bold text-slate-800 mb-4">Recent Notices</h3>
@@ -384,7 +511,7 @@ const StudentDashboard = () => {
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <div>
                 <h3 className="text-xl font-bold text-gray-800">Admit Card Preview</h3>
-                <p className="text-sm text-gray-500">Download your examination admit card</p>
+                <p className="text-sm text-gray-500">Print or save your examination admit card as PDF</p>
               </div>
               <button onClick={() => setAdmitCardModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                 <X className="w-6 h-6" />
@@ -523,11 +650,60 @@ const StudentDashboard = () => {
               {examRoutine && (
                 <button 
                   onClick={handlePrint}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-medium flex items-center transition-colors shadow-sm"
+                  className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-medium flex items-center transition-colors shadow-sm cursor-pointer"
                 >
                   <Printer className="w-4 h-4 mr-2" /> Print / Save as PDF
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Official Report Card Modal */}
+      {reportCardModalOpen && profile && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full overflow-hidden flex flex-col max-h-[96vh] my-auto">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <div>
+                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                  <Award className="w-5 h-5 text-amber-600" />
+                  {selectedReportCard?.examType || selectedReportCard?.examTitle || 'Official Examination'} Report Card
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {profile.name} • Class: {profile.class} • Roll: {profile.rollNumber} • Academic Session: {selectedReportCard?.session || '2026-2027'}
+                </p>
+              </div>
+              <button 
+                onClick={() => setReportCardModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-100 flex justify-center">
+              <ReportCard
+                student={profile}
+                reportCardData={selectedReportCard || getDefaultReportCard(profile)}
+                isEditable={false}
+                id="student-view-report-card"
+              />
+            </div>
+
+            <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-between items-center gap-3 no-print">
+              <button
+                onClick={() => setReportCardModalOpen(false)}
+                className="px-5 py-2.5 rounded-lg border border-slate-300 font-bold text-slate-700 hover:bg-slate-100 transition-colors text-sm cursor-pointer"
+              >
+                Close
+              </button>
+              <button 
+                onClick={() => handlePrintReportCard(selectedReportCard)}
+                className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg hover:bg-emerald-700 font-bold flex items-center transition-colors shadow-md text-sm cursor-pointer"
+              >
+                <Printer className="w-4 h-4 mr-2" /> Save &amp; Print as PDF
+              </button>
             </div>
           </div>
         </div>

@@ -62,7 +62,7 @@ After running `node seed.js`, you can use the following credentials to test the 
 
 - **Admin Login**:
   - Email: `admin@hnp.edu`
-  - Password: `admin123`
+  - Password: `hnp@1987`
 
 - **Student Login**:
   - Email: `john@student.hnp.edu`

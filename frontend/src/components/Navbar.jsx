@@ -10,6 +10,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('role');
     navigate('/login');
   };
 
@@ -30,7 +31,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-20">
           {/* Left Side Logo */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <img src="/hnp-logo.jpg" alt="HNP Institute" className="h-10 w-10 sm:h-12 sm:w-12 object-contain bg-white rounded-sm" />
+            <img src="/hnp-logo.jpg" alt="HNP Institute" className="h-10 w-10 sm:h-12 sm:w-12 object-cover rounded-full border border-white/30 shadow-xs" />
             <Link to="/" className="text-lg sm:text-xl lg:text-2xl font-bold tracking-wider">HNP Institute</Link>
           </div>
           
@@ -66,8 +67,9 @@ const Navbar = () => {
                     </Link>
                   )}
                   <button
+                    id="nav-logout-btn"
                     onClick={handleLogout}
-                    className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                    className="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer"
                   >
                     Logout
                   </button>

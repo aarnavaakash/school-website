@@ -21,7 +21,7 @@ const seedData = async () => {
     await Gallery.deleteMany();
 
     const salt = await bcrypt.genSalt(10);
-    const adminPassword = await bcrypt.hash('admin123', salt);
+    const adminPassword = await bcrypt.hash('hnp@1987', salt);
     const studentPassword = await bcrypt.hash('student123', salt);
 
     // Create Admin

@@ -62,6 +62,76 @@ exports.updateStudent = async (req, res) => {
       await User.findOneAndUpdate({ email: student.email }, { name: req.body.name });
     }
 
+    // Check if this is a reportCard save
+    if (req.body.reportCard) {
+      let reportCardData = req.body.reportCard;
+      if (typeof reportCardData === 'string') {
+        try {
+          reportCardData = JSON.parse(reportCardData);
+        } catch (e) {}
+      }
+
+      const examType = reportCardData.examType || reportCardData.examName || reportCardData.examTitle || 'Half Yearly Examination';
+      reportCardData.examType = examType;
+      reportCardData.examName = examType;
+
+      const subjects = reportCardData.subjects || [];
+      const marksArray = subjects.map(s => ({
+        subject: s.subject,
+        score: Number(s.obtained) || 0,
+        maxScore: Number(s.maxMarks) || 80
+      }));
+
+      // Update or add to reportCards array
+      let existingReportCards = Array.isArray(student.reportCards) ? [...student.reportCards] : [];
+      const existingIdx = existingReportCards.findIndex(
+        rc => (rc.examType && rc.examType.trim().toLowerCase() === examType.trim().toLowerCase()) ||
+              (rc.examName && rc.examName.trim().toLowerCase() === examType.trim().toLowerCase())
+      );
+
+      const updatedRcEntry = {
+        ...reportCardData,
+        updatedAt: new Date()
+      };
+
+      if (existingIdx >= 0) {
+        existingReportCards[existingIdx] = updatedRcEntry;
+      } else {
+        existingReportCards.push(updatedRcEntry);
+      }
+
+      // Also update or add to examResults
+      let existingExamResults = Array.isArray(student.examResults) ? [...student.examResults] : [];
+      const examIdx = existingExamResults.findIndex(
+        er => er.examName && er.examName.trim().toLowerCase() === examType.trim().toLowerCase()
+      );
+      const newExamResult = {
+        examName: examType,
+        marks: marksArray,
+        result: reportCardData.finalResult || 'PASS',
+        date: new Date()
+      };
+      if (examIdx >= 0) {
+        existingExamResults[examIdx] = newExamResult;
+      } else {
+        existingExamResults.push(newExamResult);
+      }
+
+      const updatedStudent = await Student.findByIdAndUpdate(req.params.id, {
+        $set: {
+          reportCards: existingReportCards,
+          reportCard: reportCardData,
+          examResults: existingExamResults,
+          admissionNo: reportCardData.admissionNo || student.admissionNo || '',
+          marks: marksArray.length > 0 ? marksArray : student.marks,
+          result: reportCardData.finalResult || student.result,
+          examName: examType
+        }
+      }, { new: true });
+
+      return res.json(updatedStudent);
+    }
+
     // Check if this is a marks/exam save (has marks array and examName)
     if (req.body.marks && req.body.examName) {
       const examResult = {

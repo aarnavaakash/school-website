@@ -19,6 +19,56 @@ const studentSchema = new mongoose.Schema({
     score: { type: Number, required: true },
     maxScore: { type: Number, default: 100 }
   }],
+  admissionNo: { type: String, default: '' },
+  reportCard: {
+    session: { type: String, default: '2026-2027' },
+    examTitle: { type: String, default: 'HALF YEARLY EXAMINATION REPORT CARD' },
+    examType: { type: String, default: 'Half Yearly Examination' },
+    admissionNo: { type: String, default: '' },
+    subjects: [{
+      subject: { type: String, required: true },
+      maxMarks: { type: Number, default: 80 },
+      obtained: { type: Number, default: 0 },
+      grade: { type: String, default: '' }
+    }],
+    totalMaxMarks: { type: Number, default: 640 },
+    totalObtained: { type: Number, default: 0 },
+    percentage: { type: Number, default: 0 },
+    overallGrade: { type: String, default: '' },
+    finalResult: { type: String, default: 'PASS' },
+    coScholastic: [{
+      trait: { type: String, required: true },
+      grade: { type: String, default: 'A' }
+    }],
+    remarks: { type: String, default: '' },
+    published: { type: Boolean, default: true },
+    updatedAt: { type: Date, default: Date.now }
+  },
+  reportCards: [{
+    examName: { type: String, default: 'Half Yearly Examination' },
+    session: { type: String, default: '2026-2027' },
+    examTitle: { type: String, default: 'HALF YEARLY EXAMINATION REPORT CARD' },
+    examType: { type: String, default: 'Half Yearly Examination' },
+    admissionNo: { type: String, default: '' },
+    subjects: [{
+      subject: { type: String, required: true },
+      maxMarks: { type: Number, default: 80 },
+      obtained: { type: Number, default: 0 },
+      grade: { type: String, default: '' }
+    }],
+    totalMaxMarks: { type: Number, default: 640 },
+    totalObtained: { type: Number, default: 0 },
+    percentage: { type: Number, default: 0 },
+    overallGrade: { type: String, default: '' },
+    finalResult: { type: String, default: 'PASS' },
+    coScholastic: [{
+      trait: { type: String, required: true },
+      grade: { type: String, default: 'A' }
+    }],
+    remarks: { type: String, default: '' },
+    published: { type: Boolean, default: true },
+    updatedAt: { type: Date, default: Date.now }
+  }],
   examResults: [{
     examName: { type: String, required: true },
     marks: [{
