@@ -180,11 +180,12 @@ const AdminDashboard = () => {
   };
 
   const getFilteredData = () => {
-    if (activeTab !== 'students') return data;
-    return data.filter(item => {
+    if (activeTab !== 'students') return Array.isArray(data) ? data : [];
+    return (data || []).filter(item => {
       const classMatch = isClassMatch(item.class, selectedClassFilter);
       const searchMatch = searchQuery 
-        ? (item.name || item.studentName || '').toLowerCase().includes(searchQuery.toLowerCase())
+        ? (item.name || item.studentName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.rollNumber || '').toLowerCase().includes(searchQuery.toLowerCase())
         : true;
       return classMatch && searchMatch;
     });
@@ -996,15 +997,21 @@ const AdminDashboard = () => {
         {!selectedStudent && activeTab === 'students' && (
           <div className="mb-6 space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative w-full sm:max-w-sm">
-                <input 
-                  type="text" 
-                  placeholder="Search student name..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
+              <div className="flex items-center gap-3 w-full sm:max-w-md">
+                <div className="relative flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Search student name or roll number..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                  <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-200 text-xs font-bold">
+                  <span>Students:</span>
+                  <span className="font-extrabold">{getFilteredData().length}</span>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
@@ -1028,17 +1035,24 @@ const AdminDashboard = () => {
             </div>
             
             <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-sm font-bold text-slate-700 mr-2">Classes:</span>
-                {['All', 'Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map(cls => (
-                  <button 
-                    key={cls}
-                    onClick={() => setSelectedClassFilter(cls)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedClassFilter === cls ? 'bg-blue-600 text-white shadow-sm' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                  >
-                    {cls === 'All' ? 'All Classes' : cls}
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-1.5 items-center">
+                <span className="text-xs font-bold text-slate-600 mr-2">Filter Class:</span>
+                {['All', 'Play Group', 'Nursery', 'LKG', 'UKG', 'Class I', 'Class II', 'Class III', 'Class IV', 'Class V', 'Class VI', 'Class VII', 'Class VIII'].map((cls) => {
+                  const count = (data || []).filter(s => cls === 'All' ? true : isClassMatch(s.class, cls)).length;
+                  return (
+                    <button 
+                      key={cls}
+                      onClick={() => setSelectedClassFilter(cls)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                        selectedClassFilter === cls 
+                          ? 'bg-blue-600 text-white shadow-xs' 
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                      }`}
+                    >
+                      {cls === 'All' ? 'All Classes' : cls} <span className="opacity-75 font-normal">({count})</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
