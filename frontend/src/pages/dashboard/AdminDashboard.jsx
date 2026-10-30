@@ -277,16 +277,21 @@ const AdminDashboard = () => {
       const res = await axios.put(`/students/${editingReportCardStudent._id}`, {
         reportCard: reportCardDraft
       });
-      setData(prev => (prev || []).map(s => s._id === res.data._id ? res.data : s));
-      if (selectedStudent && selectedStudent._id === res.data._id) {
-        setSelectedStudent(res.data);
+      const updatedStudent = res.data;
+      setData(prev => (prev || []).map(s => s._id === updatedStudent._id ? updatedStudent : s));
+      if (selectedStudent && selectedStudent._id === updatedStudent._id) {
+        setSelectedStudent(updatedStudent);
       }
-      setActionMessage(`Report card saved successfully for ${res.data.name}!`);
+      setEditingReportCardStudent(updatedStudent);
+      fetchData('students');
+      setActionMessage(`Report card saved successfully for ${updatedStudent.name}!`);
       setTimeout(() => setActionMessage(''), 4000);
       closeReportCardEditor();
     } catch (err) {
       console.error('Error saving report card:', err);
-      setActionMessage('Failed to save report card. Please try again.');
+      const errMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to save report card. Please try again.';
+      setActionMessage(`Failed to save: ${errMsg}`);
+      setTimeout(() => setActionMessage(''), 5000);
     } finally {
       setIsSavingReportCard(false);
     }
@@ -1843,6 +1848,7 @@ const AdminDashboard = () => {
                   value={reportCardDraft.examType || reportCardSelectedExam}
                   onChange={(e) => {
                     const newExam = e.target.value;
+                    setReportCardSelectedExam(newExam);
                     const existingForExam = getDefaultReportCard(editingReportCardStudent, newExam);
                     setReportCardDraft({
                       ...existingForExam,

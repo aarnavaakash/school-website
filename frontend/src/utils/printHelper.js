@@ -39,17 +39,20 @@ export const printElement = (element, documentTitle = 'Admit_Card') => {
         <style>
           @page {
             size: A4 portrait;
-            margin: 6mm;
+            margin: 0 !important;
           }
           * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            box-sizing: border-box !important;
           }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            width: 100% !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            overflow: hidden !important;
             font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
           }
           .admit-card-page-wrapper {
@@ -81,12 +84,14 @@ export const printElement = (element, documentTitle = 'Admit_Card') => {
             flex-direction: column !important;
             justify-content: center !important;
             align-items: center !important;
-            min-height: 284mm !important;
-            width: 100% !important;
+            width: 210mm !important;
+            height: 297mm !important;
+            max-height: 297mm !important;
             box-sizing: border-box !important;
-            padding: 0 !important;
+            padding: 4mm 5mm !important;
             margin: 0 !important;
             background: #ffffff !important;
+            overflow: hidden !important;
           }
           .admit-card-element,
           #printable-admit-card {
@@ -100,12 +105,20 @@ export const printElement = (element, documentTitle = 'Admit_Card') => {
             break-inside: avoid !important;
           }
           .report-card-element,
-          #printable-report-card {
+          #printable-report-card,
+          #report-card-editor-card,
+          #report-card-preview-modal-card,
+          #student-view-report-card {
             width: 100% !important;
-            max-width: 200mm !important;
+            max-width: 198mm !important;
+            height: 288mm !important;
+            max-height: 288mm !important;
             box-sizing: border-box !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+            overflow: hidden !important;
+            margin: 0 auto !important;
+            padding: 3mm 4mm 2mm 4mm !important;
           }
           .no-print {
             display: none !important;
@@ -113,18 +126,54 @@ export const printElement = (element, documentTitle = 'Admit_Card') => {
         </style>
       `;
 
-      // 4. Determine content HTML (batch container vs single card)
+      // 4. Clone element to sanitize inputs for crystal-clear print rendering
+      const clone = element.cloneNode(true);
+      const origInputs = element.querySelectorAll('input, textarea, select');
+      const cloneInputs = clone.querySelectorAll('input, textarea, select');
+      origInputs.forEach((origInput, idx) => {
+        const cloneInput = cloneInputs[idx];
+        if (!cloneInput) return;
+        const val = origInput.value !== undefined ? origInput.value : '';
+        if (origInput.tagName === 'TEXTAREA') {
+          const div = document.createElement('div');
+          div.className = cloneInput.className || '';
+          div.textContent = val;
+          div.style.cssText = cloneInput.style.cssText;
+          div.style.border = 'none';
+          div.style.background = 'transparent';
+          div.style.padding = '0';
+          div.style.whiteSpace = 'pre-wrap';
+          div.style.width = '100%';
+          div.style.display = 'block';
+          cloneInput.parentNode?.replaceChild(div, cloneInput);
+        } else {
+          const span = document.createElement('span');
+          span.className = cloneInput.className || '';
+          span.textContent = val;
+          span.style.cssText = cloneInput.style.cssText;
+          span.style.border = 'none';
+          span.style.background = 'transparent';
+          span.style.padding = '0';
+          span.style.display = 'inline-block';
+          cloneInput.parentNode?.replaceChild(span, cloneInput);
+        }
+      });
+
+      const noPrintEls = clone.querySelectorAll('.no-print');
+      noPrintEls.forEach((el) => el.remove());
+
+      // Determine content HTML (batch container vs single card)
       let contentHtml = '';
       if (element.classList && (element.classList.contains('admit-card-page-wrapper') || element.classList.contains('report-card-page-wrapper'))) {
-        contentHtml = element.outerHTML;
+        contentHtml = clone.outerHTML;
       } else if (element.querySelector && (element.querySelector('.admit-card-page-wrapper') || element.querySelector('.report-card-page-wrapper'))) {
-        // Container of multiple pages (e.g. batchContainerRef)
-        contentHtml = element.innerHTML;
+        contentHtml = clone.innerHTML;
       } else {
-        // Single card element: wrap in appropriate page wrapper
-        const isReportCard = element.classList?.contains('report-card-element') || element.id?.includes('report-card');
+        const isReportCard = element.classList?.contains('report-card-element') || 
+                             element.id?.includes('report-card') || 
+                             clone.querySelector('.report-card-element') !== null;
         const wrapperClass = isReportCard ? 'report-card-page-wrapper' : 'admit-card-page-wrapper';
-        contentHtml = `<div class="${wrapperClass}">${element.outerHTML}</div>`;
+        contentHtml = `<div class="${wrapperClass}">${clone.outerHTML}</div>`;
       }
 
       // 5. Write document contents into the iframe

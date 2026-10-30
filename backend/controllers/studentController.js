@@ -2,6 +2,36 @@ const Student = require('../models/Student');
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 
+const calculateGrade = (score, maxScore) => {
+  if (score === '' || score === null || score === undefined || isNaN(score)) return '-';
+  const pct = (Number(score) / (Number(maxScore) || 100)) * 100;
+  if (pct >= 90) return 'A1';
+  if (pct >= 80) return 'A2';
+  if (pct >= 70) return 'B1';
+  if (pct >= 60) return 'B2';
+  if (pct >= 50) return 'C1';
+  if (pct >= 40) return 'C2';
+  if (pct >= 33) return 'D';
+  return 'E';
+};
+
+const isExamMatch = (examA, examB) => {
+  if (!examA || !examB) return false;
+  const a = String(examA).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const b = String(examB).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+  const isPt1 = (s) => s.includes('periodic1') || s.includes('periodictest1') || s.includes('pt1');
+  const isPt2 = (s) => s.includes('periodic2') || s.includes('periodictest2') || s.includes('pt2');
+  const isHalf = (s) => s.includes('halfyearly') || s.includes('halfyear') || s.includes('midterm');
+  const isAnnual = (s) => s.includes('annual') || s.includes('final');
+  if (isPt1(a) && isPt1(b)) return true;
+  if (isPt2(a) && isPt2(b)) return true;
+  if (isHalf(a) && isHalf(b)) return true;
+  if (isAnnual(a) && isAnnual(b)) return true;
+  return false;
+};
+
 exports.getStudents = async (req, res) => {
   try {
     const students = await Student.find();
@@ -71,23 +101,52 @@ exports.updateStudent = async (req, res) => {
         } catch (e) {}
       }
 
-      const examType = reportCardData.examType || reportCardData.examName || reportCardData.examTitle || 'Half Yearly Examination';
+      const examType = String(reportCardData.examType || reportCardData.examName || reportCardData.examTitle || 'Half Yearly Examination').trim();
       reportCardData.examType = examType;
       reportCardData.examName = examType;
+      reportCardData.session = reportCardData.session || '2026-2027';
 
-      const subjects = reportCardData.subjects || [];
+      // Clean subjects: ensure subject name exists
+      const rawSubjects = Array.isArray(reportCardData.subjects) ? reportCardData.subjects : [];
+      const subjects = rawSubjects
+        .filter(s => s && s.subject && String(s.subject).trim() !== '')
+        .map(s => {
+          const obt = (s.obtained !== '' && s.obtained !== null && s.obtained !== undefined && !isNaN(s.obtained))
+            ? Number(s.obtained)
+            : '';
+          const maxM = Number(s.maxMarks) || 80;
+          return {
+            subject: String(s.subject).trim(),
+            maxMarks: maxM,
+            obtained: obt,
+            grade: s.grade || (obt !== '' ? calculateGrade(obt, maxM) : '')
+          };
+        });
+      reportCardData.subjects = subjects;
+
+      const validMarks = subjects.filter(s => s.obtained !== '' && !isNaN(s.obtained));
+      const hasAnyMarks = validMarks.length > 0;
+      const totalMax = subjects.reduce((sum, s) => sum + (Number(s.maxMarks) || 0), 0) || Number(reportCardData.totalMaxMarks) || 640;
+      const totalObt = hasAnyMarks ? validMarks.reduce((sum, s) => sum + Number(s.obtained), 0) : '';
+      const pctNumber = hasAnyMarks && totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(2) : '';
+      const pctString = hasAnyMarks ? `${pctNumber}%` : '';
+
+      reportCardData.totalMaxMarks = totalMax;
+      reportCardData.totalObtained = reportCardData.totalObtained !== undefined && reportCardData.totalObtained !== '' ? reportCardData.totalObtained : totalObt;
+      reportCardData.percentage = reportCardData.percentage ? String(reportCardData.percentage) : pctString;
+      reportCardData.overallGrade = reportCardData.overallGrade || (hasAnyMarks ? calculateGrade(totalObt, totalMax) : '-');
+      reportCardData.finalResult = reportCardData.finalResult || (hasAnyMarks ? (Number(pctNumber) >= 33 ? 'PASS' : 'NEEDS IMPROVEMENT') : 'PASS');
+
+      // Create marksArray for legacy marks and examResults
       const marksArray = subjects.map(s => ({
         subject: s.subject,
-        score: Number(s.obtained) || 0,
+        score: s.obtained !== '' && !isNaN(s.obtained) ? Number(s.obtained) : 0,
         maxScore: Number(s.maxMarks) || 80
       }));
 
       // Update or add to reportCards array
       let existingReportCards = Array.isArray(student.reportCards) ? [...student.reportCards] : [];
-      const existingIdx = existingReportCards.findIndex(
-        rc => (rc.examType && rc.examType.trim().toLowerCase() === examType.trim().toLowerCase()) ||
-              (rc.examName && rc.examName.trim().toLowerCase() === examType.trim().toLowerCase())
-      );
+      const existingIdx = existingReportCards.findIndex(rc => rc && (isExamMatch(rc.examType, examType) || isExamMatch(rc.examName, examType)));
 
       const updatedRcEntry = {
         ...reportCardData,
@@ -102,9 +161,7 @@ exports.updateStudent = async (req, res) => {
 
       // Also update or add to examResults
       let existingExamResults = Array.isArray(student.examResults) ? [...student.examResults] : [];
-      const examIdx = existingExamResults.findIndex(
-        er => er.examName && er.examName.trim().toLowerCase() === examType.trim().toLowerCase()
-      );
+      const examIdx = existingExamResults.findIndex(er => er && isExamMatch(er.examName, examType));
       const newExamResult = {
         examName: examType,
         marks: marksArray,
@@ -134,20 +191,82 @@ exports.updateStudent = async (req, res) => {
 
     // Check if this is a marks/exam save (has marks array and examName)
     if (req.body.marks && req.body.examName) {
+      const examType = String(req.body.examName).trim();
+      const rawMarks = Array.isArray(req.body.marks) ? req.body.marks : [];
+      const marksArray = rawMarks
+        .filter(m => m && m.subject && String(m.subject).trim() !== '')
+        .map(m => ({
+          subject: String(m.subject).trim(),
+          score: Number(m.score) || 0,
+          maxScore: Number(m.maxScore) || 100
+        }));
+
+      const totalObt = marksArray.reduce((sum, m) => sum + m.score, 0);
+      const totalMax = marksArray.reduce((sum, m) => sum + m.maxScore, 0);
+      const pct = totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(2) : 0;
+      const pctStr = `${pct}%`;
+      const resultStr = req.body.result || (Number(pct) >= 33 ? 'Pass' : 'Fail');
+
+      // Update existing examResults
+      let existingExamResults = Array.isArray(student.examResults) ? [...student.examResults] : [];
+      const examIdx = existingExamResults.findIndex(er => er && isExamMatch(er.examName, examType));
       const examResult = {
-        examName: req.body.examName,
-        marks: req.body.marks,
-        result: req.body.result || 'Pending',
+        examName: examType,
+        marks: marksArray,
+        result: resultStr,
         date: new Date()
       };
+      if (examIdx >= 0) {
+        existingExamResults[examIdx] = examResult;
+      } else {
+        existingExamResults.push(examResult);
+      }
 
-      // Push to examResults history AND update latest marks/result/examName
+      // Synchronize into reportCards
+      let existingReportCards = Array.isArray(student.reportCards) ? [...student.reportCards] : [];
+      const rcIdx = existingReportCards.findIndex(rc => rc && (isExamMatch(rc.examType, examType) || isExamMatch(rc.examName, examType)));
+      const newRc = {
+        session: student.reportCard?.session || '2026-2027',
+        examTitle: examType.toUpperCase().includes('REPORT') ? examType.toUpperCase() : `${examType.toUpperCase()} REPORT CARD`,
+        examType: examType,
+        examName: examType,
+        admissionNo: student.admissionNo || (student.rollNumber ? `HNP-${student.rollNumber}` : 'HNP-001'),
+        subjects: marksArray.map(m => ({
+          subject: m.subject,
+          maxMarks: m.maxScore,
+          obtained: m.score,
+          grade: calculateGrade(m.score, m.maxScore)
+        })),
+        totalMaxMarks: totalMax,
+        totalObtained: totalObt,
+        percentage: pctStr,
+        overallGrade: calculateGrade(totalObt, totalMax),
+        finalResult: resultStr.toUpperCase(),
+        coScholastic: student.reportCard?.coScholastic || [
+          { trait: 'Discipline & Conduct', grade: 'A' },
+          { trait: 'Attendance & Regularity', grade: 'A' },
+          { trait: 'Cleanliness & Uniform', grade: 'A' },
+          { trait: 'Co-Curricular Participation', grade: 'A' },
+        ],
+        remarks: student.reportCard?.remarks || 'Good academic performance and disciplined conduct.',
+        published: true,
+        updatedAt: new Date()
+      };
+
+      if (rcIdx >= 0) {
+        existingReportCards[rcIdx] = { ...existingReportCards[rcIdx], ...newRc };
+      } else {
+        existingReportCards.push(newRc);
+      }
+
       const updatedStudent = await Student.findByIdAndUpdate(req.params.id, {
-        $push: { examResults: examResult },
         $set: {
-          marks: req.body.marks,
-          result: req.body.result,
-          examName: req.body.examName
+          marks: marksArray,
+          result: resultStr,
+          examName: examType,
+          examResults: existingExamResults,
+          reportCards: existingReportCards,
+          reportCard: newRc
         }
       }, { new: true });
 

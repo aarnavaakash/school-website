@@ -15,41 +15,60 @@ export const calculateGrade = (score, maxScore) => {
   return 'E';
 };
 
-export const getDefaultReportCard = (student, targetExamName) => {
-  const targetKey = targetExamName ? String(targetExamName).trim().toLowerCase() : '';
+export const isExamMatch = (examA, examB) => {
+  if (!examA || !examB) return false;
+  const a = String(examA).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const b = String(examB).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+  const isPt1 = (s) => s.includes('periodic1') || s.includes('periodictest1') || s.includes('pt1');
+  const isPt2 = (s) => s.includes('periodic2') || s.includes('periodictest2') || s.includes('pt2');
+  const isHalf = (s) => s.includes('halfyearly') || s.includes('halfyear') || s.includes('midterm');
+  const isAnnual = (s) => s.includes('annual') || s.includes('final');
+  if (isPt1(a) && isPt1(b)) return true;
+  if (isPt2(a) && isPt2(b)) return true;
+  if (isHalf(a) && isHalf(b)) return true;
+  if (isAnnual(a) && isAnnual(b)) return true;
+  return false;
+};
 
-  // Check if student has reportCards array and find target or latest
+export const getDefaultReportCard = (student, targetExamName) => {
+  // 1. Check if student has reportCards array and find target
   let targetRc = null;
-  if (targetKey && Array.isArray(student?.reportCards)) {
+  if (targetExamName && Array.isArray(student?.reportCards)) {
     targetRc = student.reportCards.find(rc => {
       if (!rc) return false;
-      const type = rc.examType ? String(rc.examType).trim().toLowerCase() : '';
-      const name = rc.examName ? String(rc.examName).trim().toLowerCase() : '';
-      const title = rc.examTitle ? String(rc.examTitle).trim().toLowerCase() : '';
-      return type === targetKey || name === targetKey || title.includes(targetKey);
+      return isExamMatch(rc.examType, targetExamName) ||
+             isExamMatch(rc.examName, targetExamName) ||
+             isExamMatch(rc.examTitle, targetExamName);
     });
   }
+
+  // 2. Check student.reportCard if it matches target
   if (!targetRc && student?.reportCard) {
-    if (!targetKey) {
+    if (!targetExamName ||
+        isExamMatch(student.reportCard.examType, targetExamName) ||
+        isExamMatch(student.reportCard.examName, targetExamName) ||
+        isExamMatch(student.reportCard.examTitle, targetExamName)) {
       targetRc = student.reportCard;
-    } else {
-      const type = student.reportCard.examType ? String(student.reportCard.examType).trim().toLowerCase() : '';
-      const name = student.reportCard.examName ? String(student.reportCard.examName).trim().toLowerCase() : '';
-      if (type === targetKey || name === targetKey) {
-        targetRc = student.reportCard;
-      }
     }
   }
-  if (!targetRc && Array.isArray(student?.reportCards) && student.reportCards.length > 0 && !targetKey) {
+
+  // 3. Fallback to latest in reportCards if no specific target requested
+  if (!targetRc && !targetExamName && Array.isArray(student?.reportCards) && student.reportCards.length > 0) {
     targetRc = student.reportCards[student.reportCards.length - 1];
   }
 
-  // Check matching examResult if available
+  // 4. Check matching examResult if available (search latest first)
   let matchedExamResult = null;
-  if (targetKey && Array.isArray(student?.examResults)) {
-    matchedExamResult = student.examResults.find(er =>
-      er?.examName && String(er.examName).trim().toLowerCase() === targetKey
-    );
+  if (targetExamName && Array.isArray(student?.examResults)) {
+    for (let i = student.examResults.length - 1; i >= 0; i--) {
+      const er = student.examResults[i];
+      if (er?.examName && isExamMatch(er.examName, targetExamName)) {
+        matchedExamResult = er;
+        break;
+      }
+    }
   }
 
   const defaultSubjects = [
@@ -73,7 +92,7 @@ export const getDefaultReportCard = (student, targetExamName) => {
       obtained: m?.score !== undefined ? m.score : '',
       grade: calculateGrade(m?.score, m?.maxScore || 80)
     }));
-  } else if (Array.isArray(student?.marks) && student.marks.length > 0) {
+  } else if (targetExamName && isExamMatch(student?.examName, targetExamName) && Array.isArray(student?.marks) && student.marks.length > 0) {
     subjects = defaultSubjects.map((def) => {
       const existing = student.marks.find(
         (m) => m?.subject && String(m.subject).trim().toLowerCase() === String(def.subject).trim().toLowerCase()
@@ -102,12 +121,12 @@ export const getDefaultReportCard = (student, targetExamName) => {
     : defaultCo;
 
   const totalMax = subjects.reduce((sum, s) => sum + (Number(s?.maxMarks) || 80), 0);
-  const hasAnyMarks = subjects.some(s => s?.obtained !== '' && s?.obtained !== null && s?.obtained !== undefined && !isNaN(s?.obtained));
+  const hasAnyMarks = subjects.some(s => s && s.obtained !== '' && s.obtained !== null && s.obtained !== undefined && !isNaN(s.obtained));
   const totalObt = hasAnyMarks ? subjects.reduce((sum, s) => sum + (Number(s?.obtained) || 0), 0) : '';
   const percentage = hasAnyMarks && totalMax > 0 ? ((totalObt / totalMax) * 100).toFixed(2) : '';
   const overallGrade = hasAnyMarks ? calculateGrade(totalObt, totalMax) : '-';
 
-  const chosenExamType = targetExamName || targetRc?.examType || student?.examName || 'Half Yearly Examination';
+  const chosenExamType = targetExamName || targetRc?.examType || targetRc?.examName || student?.examName || 'Half Yearly Examination';
   const chosenExamStr = String(chosenExamType || 'Half Yearly Examination');
   const chosenExamTitle = targetRc?.examTitle || (chosenExamStr.toUpperCase().includes('REPORT') ? chosenExamStr.toUpperCase() : `${chosenExamStr.toUpperCase()} REPORT CARD`);
 
@@ -115,7 +134,7 @@ export const getDefaultReportCard = (student, targetExamName) => {
   const resolvedObtained = hasAnyMarks ? (targetRc?.totalObtained !== undefined && targetRc?.totalObtained !== '' ? targetRc.totalObtained : totalObt) : '';
   const resolvedPct = hasAnyMarks 
     ? (targetRc?.percentage !== undefined && targetRc?.percentage !== '' 
-        ? (typeof targetRc.percentage === 'number' ? `${targetRc.percentage}%` : targetRc.percentage) 
+        ? (typeof targetRc.percentage === 'number' ? `${targetRc.percentage}%` : String(targetRc.percentage)) 
         : `${percentage}%`) 
     : '';
   const resolvedGrade = hasAnyMarks ? (targetRc?.overallGrade || overallGrade) : '-';
@@ -239,34 +258,37 @@ const ReportCard = ({
       id={id}
       className="report-card-element bg-white text-slate-900 mx-auto select-text font-serif"
       style={{
-        width: '210mm',
-        minHeight: '297mm',
-        maxWidth: '100%',
+        width: '100%',
+        maxWidth: '198mm',
+        height: '288mm',
+        maxHeight: '288mm',
         boxSizing: 'border-box',
-        padding: '10mm 12mm 8mm 12mm',
-        backgroundColor: '#fdfbf7',
+        padding: '3mm 4mm 2mm 4mm',
+        backgroundColor: '#fffdf9',
         color: '#1e293b',
         fontFamily: "'Georgia', 'Times New Roman', serif",
-        position: 'relative'
+        position: 'relative',
+        overflow: 'hidden'
       }}
     >
       {/* Laurel border SVG inline styles for reliable printing */}
       <style>{`
         #${id} .outer-border {
-          border: 4px solid #1e3a8a;
-          padding: 6px;
+          border: 3.5px solid #1e3a8a;
+          padding: 4px;
           height: 100%;
-          min-height: 275mm;
+          max-height: 100%;
           display: flex;
           flex-direction: column;
           position: relative;
           background: #fffdf9;
-          box-shadow: inset 0 0 0 2px #d97706, inset 0 0 0 6px #ffffff;
+          box-shadow: inset 0 0 0 2px #d97706, inset 0 0 0 5px #ffffff;
           box-sizing: border-box;
+          overflow: hidden;
         }
         #${id} .inner-border {
           border: 2px solid #d97706;
-          padding: 10px 14px 8px 14px;
+          padding: 5px 12px 4px 12px;
           height: 100%;
           flex: 1;
           display: flex;
@@ -275,35 +297,36 @@ const ReportCard = ({
           background-color: #fffdf9;
           position: relative;
           box-sizing: border-box;
+          overflow: hidden;
         }
         #${id} .inner-border::before, #${id} .inner-border::after {
           content: "";
           position: absolute;
           top: 0;
           bottom: 0;
-          width: 12px;
+          width: 9px;
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='24' viewBox='0 0 12 24'%3E%3Crect width='12' height='24' fill='%231e3a8a'/%3E%3Cpath d='M6 2 C3 6 1 10 6 14 C11 10 9 6 6 2 Z' fill='%23fbbf24'/%3E%3Cpath d='M6 10 C3 14 1 18 6 22 C11 18 9 14 6 10 Z' fill='%23d97706'/%3E%3C/svg%3E");
           background-repeat: repeat-y;
           opacity: 0.9;
         }
-        #${id} .inner-border::before { left: -14px; border-right: 1px solid #d97706; }
-        #${id} .inner-border::after { right: -14px; border-left: 1px solid #d97706; }
+        #${id} .inner-border::before { left: -10px; border-right: 1px solid #d97706; }
+        #${id} .inner-border::after { right: -10px; border-left: 1px solid #d97706; }
 
         #${id} .header-box {
           background: linear-gradient(135deg, #0f2b5c 0%, #1e3a8a 50%, #0f2b5c 100%);
-          border: 2px solid #d97706;
+          border: 1.5px solid #d97706;
           border-radius: 6px;
-          padding: 10px 12px;
+          padding: 6px 10px;
           color: #ffffff;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          box-shadow: inset 0 0 10px rgba(217, 119, 6, 0.3);
-          margin-bottom: 8px;
+          box-shadow: inset 0 0 8px rgba(217, 119, 6, 0.3);
+          margin-bottom: 5px;
         }
         #${id} .logo-container {
-          width: 68px;
-          height: 68px;
+          width: 56px;
+          height: 56px;
           border-radius: 50%;
           border: 2px solid #fbbf24;
           background: #ffffff;
@@ -321,54 +344,60 @@ const ReportCard = ({
         #${id} .header-center {
           text-align: center;
           flex: 1;
-          padding: 0 10px;
+          padding: 0 8px;
+          min-width: 0;
         }
         #${id} .school-title {
-          font-size: 15.5pt;
+          font-size: 13.5pt;
           font-weight: bold;
           letter-spacing: 0.5px;
           color: #fef3c7;
           text-transform: uppercase;
           margin: 0;
           text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
-          line-height: 1.2;
+          line-height: 1.15;
         }
         #${id} .school-address {
-          font-size: 8.5pt;
+          font-size: 7.5pt;
           color: #e2e8f0;
-          margin: 2px 0 1px 0;
-          letter-spacing: 0.3px;
+          margin: 1px 0;
+          letter-spacing: 0.2px;
         }
         #${id} .trust-name {
-          font-size: 7.5pt;
+          font-size: 6.8pt;
           color: #fbbf24;
           font-style: italic;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
         #${id} .exam-title-input {
           background: linear-gradient(90deg, #b45309, #f59e0b, #b45309);
           color: #0f172a;
-          font-weight: bold;
-          font-size: 9.5pt;
-          padding: 3px 14px;
+          font-weight: 800;
+          font-size: 8pt;
+          padding: 2.5px 12px;
           border-radius: 12px;
-          letter-spacing: 1px;
+          letter-spacing: 0.8px;
           text-transform: uppercase;
           border: 1px solid #fef3c7;
           text-align: center;
-          width: 82%;
+          width: auto;
+          min-width: 65%;
+          max-width: 95%;
           font-family: inherit;
           display: inline-block;
+          white-space: normal;
+          word-break: break-word;
+          line-height: 1.2;
         }
         #${id} .section-label {
-          font-size: 9pt;
+          font-size: 8pt;
           font-weight: bold;
           color: #1e3a8a;
-          border-bottom: 2px solid #d97706;
-          padding-bottom: 2px;
-          margin-bottom: 6px;
+          border-bottom: 1.5px solid #d97706;
+          padding-bottom: 1px;
+          margin-bottom: 4px;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.4px;
           display: flex;
           justify-content: space-between;
           align-items: center;
@@ -376,39 +405,37 @@ const ReportCard = ({
         #${id} .student-info-grid {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 8px;
+          margin-bottom: 5px;
           background: #ffffff;
           border: 1px solid #cbd5e1;
+          table-layout: fixed;
         }
         #${id} .student-info-grid td {
-          padding: 4px 6px;
-          font-size: 8.5pt;
+          padding: 2.5px 5px;
+          font-size: 7.8pt;
           border: 1px solid #e2e8f0;
+          vertical-align: middle;
         }
         #${id} .student-info-grid .field-label {
           font-weight: bold;
           color: #1e3a8a;
-          width: 17%;
           background-color: #f8fafc;
         }
         #${id} .student-info-grid .field-value {
-          width: 27%;
           color: #0f172a;
           font-weight: 500;
+          word-break: break-word;
         }
         #${id} .student-info-grid .photo-cell {
-          width: 82px;
-          min-width: 82px;
-          max-width: 82px;
           text-align: center;
           vertical-align: middle;
-          padding: 3px;
+          padding: 2px;
           background-color: #ffffff;
           border: 1px solid #cbd5e1;
         }
         #${id} .student-photo-frame {
-          width: 72px;
-          height: 86px;
+          width: 58px;
+          height: 68px;
           border: 1.5px solid #1e3a8a;
           margin: 0 auto;
           overflow: hidden;
@@ -428,22 +455,23 @@ const ReportCard = ({
         #${id} .marks-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 8px;
+          margin-bottom: 5px;
           background: #ffffff;
+          table-layout: fixed;
         }
         #${id} .marks-table th {
           background-color: #1e3a8a;
           color: #ffffff;
-          font-size: 8.5pt;
+          font-size: 7.8pt;
           font-weight: bold;
-          padding: 5px 6px;
+          padding: 3px 4px;
           border: 1px solid #1e3a8a;
           text-align: center;
           text-transform: uppercase;
         }
         #${id} .marks-table td {
-          padding: 3px 4px;
-          font-size: 8.5pt;
+          padding: 2px 3px;
+          font-size: 7.8pt;
           border: 1px solid #cbd5e1;
           text-align: center;
         }
@@ -453,15 +481,16 @@ const ReportCard = ({
         #${id} .marks-table td.subject-name {
           text-align: left;
           font-weight: 600;
-          padding-left: 10px;
+          padding-left: 6px;
           color: #1e293b;
+          word-break: break-word;
         }
         #${id} .summary-box {
           background: #fefce8;
           border: 1px solid #f59e0b;
           border-radius: 4px;
-          padding: 6px 8px;
-          margin-bottom: 8px;
+          padding: 3px 6px;
+          margin-bottom: 5px;
           display: flex;
           justify-content: space-around;
           align-items: center;
@@ -470,21 +499,21 @@ const ReportCard = ({
           text-align: center;
         }
         #${id} .summary-title {
-          font-size: 7.5pt;
+          font-size: 6.8pt;
           color: #b45309;
           font-weight: bold;
           text-transform: uppercase;
         }
         #${id} .summary-val {
-          font-size: 9.5pt;
+          font-size: 8.8pt;
           font-weight: bold;
           color: #0f172a;
           margin-top: 1px;
         }
         #${id} .bottom-grid {
           display: flex;
-          gap: 10px;
-          margin-bottom: 8px;
+          gap: 6px;
+          margin-bottom: 4px;
           flex: 1;
         }
         #${id} .co-scholastic-box, #${id} .remarks-box {
@@ -492,32 +521,32 @@ const ReportCard = ({
           background: #ffffff;
           border: 1px solid #cbd5e1;
           border-radius: 4px;
-          padding: 6px;
+          padding: 4px;
           display: flex;
           flex-direction: column;
         }
         #${id} .remarks-content {
           flex: 1;
-          min-height: 90px;
+          min-height: 52px;
           border: 1px dashed #cbd5e1;
           border-radius: 3px;
-          margin-top: 4px;
-          padding: 6px;
+          margin-top: 2px;
+          padding: 4px 6px;
           background-color: #fafafa;
-          font-size: 8.5pt;
+          font-size: 7.8pt;
           color: #334155;
-          line-height: 1.4;
+          line-height: 1.35;
         }
         #${id} .co-table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 4px;
+          margin-top: 2px;
           flex: 1;
         }
         #${id} .co-table th, #${id} .co-table td {
           border: 1px solid #cbd5e1;
-          padding: 4px 6px;
-          font-size: 8pt;
+          padding: 2px 4px;
+          font-size: 7.2pt;
           text-align: center;
         }
         #${id} .co-table th {
@@ -532,32 +561,32 @@ const ReportCard = ({
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
-          padding: 8px 15px 4px 15px;
-          margin-top: 4px;
+          padding: 4px 10px 2px 10px;
+          margin-top: 2px;
         }
         #${id} .sig-block {
           text-align: center;
-          width: 140px;
+          width: 120px;
         }
         #${id} .sig-line {
           border-top: 1px solid #475569;
-          margin-bottom: 3px;
+          margin-bottom: 2px;
         }
         #${id} .sig-title {
-          font-size: 8pt;
+          font-size: 7.2pt;
           font-weight: bold;
           color: #1e3a8a;
         }
         #${id} .stamp-box {
-          width: 58px;
-          height: 58px;
-          border: 2px dashed #d97706;
+          width: 48px;
+          height: 48px;
+          border: 1.5px dashed #d97706;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           text-align: center;
-          font-size: 6pt;
+          font-size: 5.5pt;
           font-weight: bold;
           color: #b45309;
           text-transform: uppercase;
@@ -570,7 +599,7 @@ const ReportCard = ({
           font-family: inherit;
           font-size: inherit;
           color: inherit;
-          padding: 2px 4px;
+          padding: 1.5px 3px;
           border-radius: 2px;
           text-align: inherit;
         }
@@ -629,18 +658,18 @@ const ReportCard = ({
           {/* Student Profile */}
           <div className="section-label">
             <span>Student's Profile</span>
-            <span style={{ fontWeight: 'normal', fontSize: '8.5pt', color: '#475569' }}>
+            <span style={{ fontWeight: 'normal', fontSize: '8pt', color: '#475569' }}>
               Academic Session:{' '}
               {isEditable ? (
                 <input
                   type="text"
                   className="editable-input font-bold"
-                  style={{ width: '90px', display: 'inline-block' }}
+                  style={{ width: '85px', display: 'inline-block' }}
                   value={data.session}
                   onChange={(e) => handleFieldChange('session', e.target.value)}
                 />
               ) : (
-                <span className="font-bold border border-slate-300 px-2 py-0.5 rounded bg-white text-slate-900 ml-1">
+                <span className="font-bold border border-slate-300 px-1.5 py-0.5 rounded bg-white text-slate-900 ml-1">
                   {data.session}
                 </span>
               )}
@@ -648,6 +677,13 @@ const ReportCard = ({
           </div>
 
           <table className="student-info-grid">
+            <colgroup>
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '27%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '24%' }} />
+              <col style={{ width: '13%' }} />
+            </colgroup>
             <tbody>
               <tr>
                 <td className="field-label">Student's Name:</td>
@@ -680,14 +716,14 @@ const ReportCard = ({
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        padding: '4px',
+                        padding: '3px',
                         color: '#64748b',
                         width: '100%',
                         height: '100%'
                       }}
                     >
-                      <User style={{ width: '22px', height: '22px', color: '#94a3b8' }} />
-                      <span style={{ fontSize: '6pt', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '3px', color: '#64748b', letterSpacing: '0.02em' }}>
+                      <User style={{ width: '20px', height: '20px', color: '#94a3b8' }} />
+                      <span style={{ fontSize: '5.5pt', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px', color: '#64748b', letterSpacing: '0.02em' }}>
                         Affix Photo
                       </span>
                     </div>
@@ -720,7 +756,7 @@ const ReportCard = ({
                   )}
                 </td>
                 <td className="field-label">Examination:</td>
-                <td className="field-value font-bold text-amber-800">
+                <td className="field-value font-bold text-amber-800 break-words">
                   {isEditable ? (
                     <input
                       type="text"
@@ -740,15 +776,23 @@ const ReportCard = ({
           <div className="section-label">Academic Performance</div>
 
           <table className="marks-table">
+            <colgroup>
+              <col style={{ width: isEditable ? '7%' : '8%' }} />
+              <col style={{ width: isEditable ? '41%' : '44%' }} />
+              <col style={{ width: isEditable ? '15%' : '16%' }} />
+              <col style={{ width: isEditable ? '15%' : '16%' }} />
+              <col style={{ width: isEditable ? '14%' : '16%' }} />
+              {isEditable && <col style={{ width: '8%' }} />}
+            </colgroup>
             <thead>
               <tr>
-                <th style={{ width: isEditable ? '6%' : '8%' }}>S.No.</th>
-                <th style={{ width: isEditable ? '40%' : '44%' }}>Subject Name</th>
-                <th style={{ width: isEditable ? '15%' : '16%' }}>Max. Marks</th>
-                <th style={{ width: isEditable ? '15%' : '16%' }}>Marks Obtained</th>
-                <th style={{ width: isEditable ? '14%' : '16%' }}>Grade</th>
+                <th>S.No.</th>
+                <th>Subject Name</th>
+                <th>Max. Marks</th>
+                <th>Marks Obtained</th>
+                <th>Grade</th>
                 {isEditable && (
-                  <th style={{ width: '10%' }} className="no-print">
+                  <th className="no-print">
                     Delete
                   </th>
                 )}

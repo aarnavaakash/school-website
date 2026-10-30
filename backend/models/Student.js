@@ -24,16 +24,17 @@ const studentSchema = new mongoose.Schema({
     session: { type: String, default: '2026-2027' },
     examTitle: { type: String, default: 'HALF YEARLY EXAMINATION REPORT CARD' },
     examType: { type: String, default: 'Half Yearly Examination' },
+    examName: { type: String, default: 'Half Yearly Examination' },
     admissionNo: { type: String, default: '' },
     subjects: [{
       subject: { type: String, required: true },
-      maxMarks: { type: Number, default: 80 },
-      obtained: { type: Number, default: 0 },
+      maxMarks: { type: mongoose.Schema.Types.Mixed, default: 80 },
+      obtained: { type: mongoose.Schema.Types.Mixed, default: '' },
       grade: { type: String, default: '' }
     }],
-    totalMaxMarks: { type: Number, default: 640 },
-    totalObtained: { type: Number, default: 0 },
-    percentage: { type: Number, default: 0 },
+    totalMaxMarks: { type: mongoose.Schema.Types.Mixed, default: 640 },
+    totalObtained: { type: mongoose.Schema.Types.Mixed, default: '' },
+    percentage: { type: mongoose.Schema.Types.Mixed, default: '' },
     overallGrade: { type: String, default: '' },
     finalResult: { type: String, default: 'PASS' },
     coScholastic: [{
@@ -52,13 +53,13 @@ const studentSchema = new mongoose.Schema({
     admissionNo: { type: String, default: '' },
     subjects: [{
       subject: { type: String, required: true },
-      maxMarks: { type: Number, default: 80 },
-      obtained: { type: Number, default: 0 },
+      maxMarks: { type: mongoose.Schema.Types.Mixed, default: 80 },
+      obtained: { type: mongoose.Schema.Types.Mixed, default: '' },
       grade: { type: String, default: '' }
     }],
-    totalMaxMarks: { type: Number, default: 640 },
-    totalObtained: { type: Number, default: 0 },
-    percentage: { type: Number, default: 0 },
+    totalMaxMarks: { type: mongoose.Schema.Types.Mixed, default: 640 },
+    totalObtained: { type: mongoose.Schema.Types.Mixed, default: '' },
+    percentage: { type: mongoose.Schema.Types.Mixed, default: '' },
     overallGrade: { type: String, default: '' },
     finalResult: { type: String, default: 'PASS' },
     coScholastic: [{
