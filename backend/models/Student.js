@@ -20,11 +20,11 @@ const studentSchema = new mongoose.Schema({
     maxScore: { type: Number, default: 100 }
   }],
   admissionNo: { type: String, default: '' },
-  udiseNo: { type: String, default: '10020104502' },
-  registrationNo: { type: String, default: '' },
+  udiseNo: { type: String, default: '10024104018' },
+  registrationNo: { type: String, default: '2041041202669153433' },
   reportCard: {
-    udiseNo: { type: String, default: '10020104502' },
-    registrationNo: { type: String, default: '' },
+    udiseNo: { type: String, default: '10024104018' },
+    registrationNo: { type: String, default: '2041041202669153433' },
     session: { type: String, default: '2026-2027' },
     examTitle: { type: String, default: 'HALF YEARLY EXAMINATION REPORT CARD' },
     examType: { type: String, default: 'Half Yearly Examination' },
@@ -50,8 +50,8 @@ const studentSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
   },
   reportCards: [{
-    udiseNo: { type: String, default: '10020104502' },
-    registrationNo: { type: String, default: '' },
+    udiseNo: { type: String, default: '10024104018' },
+    registrationNo: { type: String, default: '2041041202669153433' },
     examName: { type: String, default: 'Half Yearly Examination' },
     session: { type: String, default: '2026-2027' },
     examTitle: { type: String, default: 'HALF YEARLY EXAMINATION REPORT CARD' },

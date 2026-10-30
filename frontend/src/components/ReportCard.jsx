@@ -141,8 +141,8 @@ export const getDefaultReportCard = (student, targetExamName) => {
   const resolvedResult = hasAnyMarks ? (targetRc?.finalResult || (Number(percentage) >= 33 ? 'PASS' : 'NEEDS IMPROVEMENT')) : 'EVALUATION PENDING';
 
   return {
-    udiseNo: targetRc?.udiseNo || student?.udiseNo || '10020104502',
-    registrationNo: targetRc?.registrationNo || student?.registrationNo || student?.admissionNo || (student?.rollNumber ? `HNP-${student.rollNumber}` : 'BR-2026-HNP'),
+    udiseNo: '10024104018',
+    registrationNo: '2041041202669153433',
     session: targetRc?.session || student?.reportCard?.session || '2026-2027',
     examTitle: chosenExamTitle,
     examType: chosenExamType,
@@ -333,47 +333,37 @@ const ReportCard = ({
           justify-content: space-between;
           align-items: center;
           width: 100%;
-          border-bottom: 1px solid rgba(251, 191, 36, 0.4);
-          padding-bottom: 2.5px;
+          border-bottom: 1px solid rgba(251, 191, 36, 0.45);
+          padding-bottom: 2px;
           margin-bottom: 3.5px;
-          font-size: 7.2pt;
-          font-weight: 700;
+          font-size: 7.8pt;
           letter-spacing: 0.5px;
-          text-transform: uppercase;
-          line-height: 1;
+          line-height: 1.1;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
         #${id} .header-meta-left {
           display: flex;
           align-items: center;
-          gap: 2px;
-          color: #fbbf24;
+          gap: 3px;
           text-align: left;
         }
         #${id} .header-meta-right {
           display: flex;
           align-items: center;
-          gap: 2px;
-          color: #fbbf24;
+          gap: 3px;
           text-align: right;
         }
         #${id} .header-meta-label {
           color: #fde68a;
-          font-weight: 700;
+          font-weight: 800;
+          text-transform: uppercase;
         }
         #${id} .header-meta-value {
           color: #ffffff;
           font-weight: 800;
           font-family: inherit;
-        }
-        #${id} .header-meta-input {
-          background: rgba(255, 255, 255, 0.15);
-          border: 1px dashed #fbbf24;
-          color: #ffffff;
-          font-weight: 800;
-          font-size: 7.2pt;
-          padding: 0.5px 4px;
-          border-radius: 2px;
-          width: 95px;
+          letter-spacing: 0.6px;
         }
         #${id} .header-main-content {
           display: flex;
@@ -687,31 +677,11 @@ const ReportCard = ({
             <div className="header-meta-bar">
               <div className="header-meta-left">
                 <span className="header-meta-label">UDISE:</span>{' '}
-                {isEditable ? (
-                  <input
-                    type="text"
-                    className="header-meta-input font-bold"
-                    value={data.udiseNo || '10020104502'}
-                    onChange={(e) => handleFieldChange('udiseNo', e.target.value)}
-                    placeholder="10020104502"
-                  />
-                ) : (
-                  <span className="header-meta-value">{data.udiseNo || '10020104502'}</span>
-                )}
+                <span className="header-meta-value">10024104018</span>
               </div>
               <div className="header-meta-right">
                 <span className="header-meta-label">REGISTRATION NO.:</span>{' '}
-                {isEditable ? (
-                  <input
-                    type="text"
-                    className="header-meta-input font-bold text-right"
-                    value={data.registrationNo !== undefined ? data.registrationNo : (student?.admissionNo || 'BR-2026-HNP')}
-                    onChange={(e) => handleFieldChange('registrationNo', e.target.value)}
-                    placeholder="BR-2026-HNP"
-                  />
-                ) : (
-                  <span className="header-meta-value">{data.registrationNo || student?.admissionNo || 'BR-2026-HNP'}</span>
-                )}
+                <span className="header-meta-value">2041041202669153433</span>
               </div>
             </div>
 
