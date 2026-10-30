@@ -1095,7 +1095,14 @@ const ReportCard = ({
               </div>
             </div>
             <div className="sig-block">
-              <div className="h-10"></div>
+              <div className="h-10 flex items-end justify-center">
+                <img
+                  src="/folder/admit-card/sign-rohit.png?v=2"
+                  alt="Principal's Signature"
+                  className="h-9 max-w-[110px] object-contain mb-0.5"
+                  crossOrigin="anonymous"
+                />
+              </div>
               <div className="sig-line"></div>
               <div className="sig-title">Principal's Signature</div>
             </div>
