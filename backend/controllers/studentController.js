@@ -104,6 +104,8 @@ exports.updateStudent = async (req, res) => {
       const examType = String(reportCardData.examType || reportCardData.examName || reportCardData.examTitle || 'Half Yearly Examination').trim();
       reportCardData.examType = examType;
       reportCardData.examName = examType;
+      reportCardData.udiseNo = reportCardData.udiseNo || student.udiseNo || '10020104502';
+      reportCardData.registrationNo = reportCardData.registrationNo || student.registrationNo || student.admissionNo || (student.rollNumber ? `HNP-${student.rollNumber}` : 'BR-2026-HNP');
       reportCardData.session = reportCardData.session || '2026-2027';
 
       // Clean subjects: ensure subject name exists
@@ -180,6 +182,8 @@ exports.updateStudent = async (req, res) => {
           reportCard: reportCardData,
           examResults: existingExamResults,
           admissionNo: reportCardData.admissionNo || student.admissionNo || '',
+          udiseNo: reportCardData.udiseNo || student.udiseNo || '10020104502',
+          registrationNo: reportCardData.registrationNo || student.registrationNo || '',
           marks: marksArray.length > 0 ? marksArray : student.marks,
           result: reportCardData.finalResult || student.result,
           examName: examType

@@ -120,6 +120,47 @@ export const printElement = (element, documentTitle = 'Admit_Card') => {
             margin: 0 auto !important;
             padding: 3mm 4mm 2mm 4mm !important;
           }
+          .exam-title-input {
+            background-color: #f59e0b !important;
+            background-image: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%) !important;
+            background: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%) !important;
+            color: #0f172a !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            border: 1px solid #fef3c7 !important;
+            border-radius: 14px !important;
+            padding: 2.5px 14px !important;
+            font-weight: 800 !important;
+            font-size: 8pt !important;
+            letter-spacing: 0.8px !important;
+            text-transform: uppercase !important;
+            text-align: center !important;
+            display: inline-block !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+          }
+          .header-box {
+            background-color: #1e3a8a !important;
+            background: linear-gradient(135deg, #0f2b5c 0%, #1e3a8a 50%, #0f2b5c 100%) !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .header-meta-bar {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            border-bottom: 1px solid rgba(251, 191, 36, 0.4) !important;
+            color: #fbbf24 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .header-meta-value {
+            color: #ffffff !important;
+            font-weight: 800 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           .no-print {
             display: none !important;
           }
@@ -146,6 +187,37 @@ export const printElement = (element, documentTitle = 'Admit_Card') => {
           div.style.width = '100%';
           div.style.display = 'block';
           cloneInput.parentNode?.replaceChild(div, cloneInput);
+        } else if (origInput.classList.contains('exam-title-input')) {
+          const span = document.createElement('span');
+          span.className = 'exam-title-input';
+          span.textContent = val;
+          span.style.backgroundColor = '#f59e0b';
+          span.style.backgroundImage = 'linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%)';
+          span.style.background = 'linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%)';
+          span.style.color = '#0f172a';
+          span.style.fontWeight = '800';
+          span.style.fontSize = '8pt';
+          span.style.padding = '2.5px 14px';
+          span.style.borderRadius = '14px';
+          span.style.border = '1px solid #fef3c7';
+          span.style.webkitPrintColorAdjust = 'exact';
+          span.style.printColorAdjust = 'exact';
+          span.style.display = 'inline-block';
+          span.style.textAlign = 'center';
+          span.style.letterSpacing = '0.8px';
+          span.style.textTransform = 'uppercase';
+          cloneInput.parentNode?.replaceChild(span, cloneInput);
+        } else if (origInput.classList.contains('header-meta-input')) {
+          const span = document.createElement('span');
+          span.className = 'header-meta-value';
+          span.textContent = val;
+          span.style.color = '#ffffff';
+          span.style.fontWeight = '800';
+          span.style.fontSize = '7.2pt';
+          span.style.webkitPrintColorAdjust = 'exact';
+          span.style.printColorAdjust = 'exact';
+          span.style.display = 'inline-block';
+          cloneInput.parentNode?.replaceChild(span, cloneInput);
         } else {
           const span = document.createElement('span');
           span.className = cloneInput.className || '';

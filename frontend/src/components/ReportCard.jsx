@@ -141,6 +141,8 @@ export const getDefaultReportCard = (student, targetExamName) => {
   const resolvedResult = hasAnyMarks ? (targetRc?.finalResult || (Number(percentage) >= 33 ? 'PASS' : 'NEEDS IMPROVEMENT')) : 'EVALUATION PENDING';
 
   return {
+    udiseNo: targetRc?.udiseNo || student?.udiseNo || '10020104502',
+    registrationNo: targetRc?.registrationNo || student?.registrationNo || student?.admissionNo || (student?.rollNumber ? `HNP-${student.rollNumber}` : 'BR-2026-HNP'),
     session: targetRc?.session || student?.reportCard?.session || '2026-2027',
     examTitle: chosenExamTitle,
     examType: chosenExamType,
@@ -313,20 +315,75 @@ const ReportCard = ({
         #${id} .inner-border::after { right: -10px; border-left: 1px solid #d97706; }
 
         #${id} .header-box {
-          background: linear-gradient(135deg, #0f2b5c 0%, #1e3a8a 50%, #0f2b5c 100%);
+          background: linear-gradient(135deg, #0f2b5c 0%, #1e3a8a 50%, #0f2b5c 100%) !important;
+          background-color: #1e3a8a !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
           border: 1.5px solid #d97706;
           border-radius: 6px;
-          padding: 6px 10px;
+          padding: 4px 8px 5px 8px;
           color: #ffffff;
           display: flex;
-          align-items: center;
-          justify-content: space-between;
+          flex-direction: column;
           box-shadow: inset 0 0 8px rgba(217, 119, 6, 0.3);
           margin-bottom: 5px;
         }
+        #${id} .header-meta-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          border-bottom: 1px solid rgba(251, 191, 36, 0.4);
+          padding-bottom: 2.5px;
+          margin-bottom: 3.5px;
+          font-size: 7.2pt;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          line-height: 1;
+        }
+        #${id} .header-meta-left {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          color: #fbbf24;
+          text-align: left;
+        }
+        #${id} .header-meta-right {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          color: #fbbf24;
+          text-align: right;
+        }
+        #${id} .header-meta-label {
+          color: #fde68a;
+          font-weight: 700;
+        }
+        #${id} .header-meta-value {
+          color: #ffffff;
+          font-weight: 800;
+          font-family: inherit;
+        }
+        #${id} .header-meta-input {
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px dashed #fbbf24;
+          color: #ffffff;
+          font-weight: 800;
+          font-size: 7.2pt;
+          padding: 0.5px 4px;
+          border-radius: 2px;
+          width: 95px;
+        }
+        #${id} .header-main-content {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+        }
         #${id} .logo-container {
-          width: 56px;
-          height: 56px;
+          width: 54px;
+          height: 54px;
           border-radius: 50%;
           border: 2px solid #fbbf24;
           background: #ffffff;
@@ -335,6 +392,8 @@ const ReportCard = ({
           justify-content: center;
           overflow: hidden;
           flex-shrink: 0;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
         #${id} .logo-img {
           width: 100%;
@@ -370,15 +429,20 @@ const ReportCard = ({
           margin-bottom: 2px;
         }
         #${id} .exam-title-input {
-          background: linear-gradient(90deg, #b45309, #f59e0b, #b45309);
-          color: #0f172a;
+          background-color: #f59e0b !important;
+          background-image: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%) !important;
+          background: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%) !important;
+          color: #0f172a !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
           font-weight: 800;
           font-size: 8pt;
-          padding: 2.5px 12px;
-          border-radius: 12px;
+          padding: 2.5px 14px;
+          border-radius: 14px;
           letter-spacing: 0.8px;
           text-transform: uppercase;
-          border: 1px solid #fef3c7;
+          border: 1px solid #fef3c7 !important;
           text-align: center;
           width: auto;
           min-width: 65%;
@@ -388,6 +452,7 @@ const ReportCard = ({
           white-space: normal;
           word-break: break-word;
           line-height: 1.2;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
         }
         #${id} .section-label {
           font-size: 8pt;
@@ -618,44 +683,79 @@ const ReportCard = ({
         <div className="inner-border">
           {/* Header */}
           <header className="header-box">
-            <div className="logo-container">
-              <img
-                src="/hnp-logo.jpg"
-                alt="H.N.P. Institute Logo"
-                className="logo-img"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = "https://lh3.googleusercontent.com/gg-dl/AHiVA1lNSaVW8wP2WPKeUuWM6X_Nb2KT1e4-GyQ9qVhVPfiIHWGb6oHO7_Aj6-dRBkMNL658g-HN2uaUUN_qKxqh2gziwGP_DPtEkHkEiM9dnIJ8dFTkPAFvhBcfXiNzdYwvABZ_c01n6ZbslgQgmlCuFS6Aac1MXr5RCQ7KrHf4XO4jlSDbCg";
-                }}
-              />
-            </div>
-            <div className="header-center">
-              <h1 className="school-title">H.N.P. INSTITUTE OF EDUCATION</h1>
-              <div className="school-address">Chhatauni Bazar, Motihari, Bihar - 845401</div>
-              <div className="trust-name">(Run & Managed by: Mira Educational & Welfare Trust)</div>
-              <div>
+            {/* Top Sub-Bar: UDISE Left (above left logo) and Registration No Right (above right logo) */}
+            <div className="header-meta-bar">
+              <div className="header-meta-left">
+                <span className="header-meta-label">UDISE:</span>{' '}
                 {isEditable ? (
                   <input
                     type="text"
-                    className="exam-title-input"
-                    value={data.examTitle}
-                    onChange={(e) => handleFieldChange('examTitle', e.target.value)}
+                    className="header-meta-input font-bold"
+                    value={data.udiseNo || '10020104502'}
+                    onChange={(e) => handleFieldChange('udiseNo', e.target.value)}
+                    placeholder="10020104502"
                   />
                 ) : (
-                  <div className="exam-title-input">{data.examTitle}</div>
+                  <span className="header-meta-value">{data.udiseNo || '10020104502'}</span>
+                )}
+              </div>
+              <div className="header-meta-right">
+                <span className="header-meta-label">REGISTRATION NO.:</span>{' '}
+                {isEditable ? (
+                  <input
+                    type="text"
+                    className="header-meta-input font-bold text-right"
+                    value={data.registrationNo !== undefined ? data.registrationNo : (student?.admissionNo || 'BR-2026-HNP')}
+                    onChange={(e) => handleFieldChange('registrationNo', e.target.value)}
+                    placeholder="BR-2026-HNP"
+                  />
+                ) : (
+                  <span className="header-meta-value">{data.registrationNo || student?.admissionNo || 'BR-2026-HNP'}</span>
                 )}
               </div>
             </div>
-            <div className="logo-container">
-              <img
-                src="/mira-logo.jpg"
-                alt="Mira Trust Logo"
-                className="logo-img"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = "https://lh3.googleusercontent.com/gg/AJWXcNdrkaz3CPEFttOn6y-d_in18X8MdHNsj3HFffoEkK81BKPFUKVwlrMB3PW5ylYiP380rMQzUdm-Q-GrkPRSZ28-m-BEuHo2WJXAdqkD2aIYaoKD6ow0aWUkpc3JOBM6oiKTNfyMCeSIcOcbRGnq_lSNkFyKN5IEgvkEh_UPip6ZToTr78qn079i1MCWy2w8lcAIJI1I4pBAiGRSns6YTX3OL20ZtUEtu1__RTElcb9-AGTPNkUd0_6DbsNCQgl491Hov7YVHR9vPi1-emF6xS_b_F1M3FdHJfg=s0";
-                }}
-              />
+
+            {/* Main Header Row with Logos and School Info */}
+            <div className="header-main-content">
+              <div className="logo-container">
+                <img
+                  src="/hnp-logo.jpg"
+                  alt="H.N.P. Institute Logo"
+                  className="logo-img"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://lh3.googleusercontent.com/gg-dl/AHiVA1lNSaVW8wP2WPKeUuWM6X_Nb2KT1e4-GyQ9qVhVPfiIHWGb6oHO7_Aj6-dRBkMNL658g-HN2uaUUN_qKxqh2gziwGP_DPtEkHkEiM9dnIJ8dFTkPAFvhBcfXiNzdYwvABZ_c01n6ZbslgQgmlCuFS6Aac1MXr5RCQ7KrHf4XO4jlSDbCg";
+                  }}
+                />
+              </div>
+              <div className="header-center">
+                <h1 className="school-title">H.N.P. INSTITUTE OF EDUCATION</h1>
+                <div className="school-address">Chhatauni Bazar, Motihari, Bihar - 845401</div>
+                <div className="trust-name">(Run & Managed by: Mira Educational & Welfare Trust)</div>
+                <div>
+                  {isEditable ? (
+                    <input
+                      type="text"
+                      className="exam-title-input"
+                      value={data.examTitle}
+                      onChange={(e) => handleFieldChange('examTitle', e.target.value)}
+                    />
+                  ) : (
+                    <div className="exam-title-input">{data.examTitle}</div>
+                  )}
+                </div>
+              </div>
+              <div className="logo-container">
+                <img
+                  src="/mira-logo.jpg"
+                  alt="Mira Trust Logo"
+                  className="logo-img"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://lh3.googleusercontent.com/gg/AJWXcNdrkaz3CPEFttOn6y-d_in18X8MdHNsj3HFffoEkK81BKPFUKVwlrMB3PW5ylYiP380rMQzUdm-Q-GrkPRSZ28-m-BEuHo2WJXAdqkD2aIYaoKD6ow0aWUkpc3JOBM6oiKTNfyMCeSIcOcbRGnq_lSNkFyKN5IEgvkEh_UPip6ZToTr78qn079i1MCWy2w8lcAIJI1I4pBAiGRSns6YTX3OL20ZtUEtu1__RTElcb9-AGTPNkUd0_6DbsNCQgl491Hov7YVHR9vPi1-emF6xS_b_F1M3FdHJfg=s0";
+                  }}
+                />
+              </div>
             </div>
           </header>
 
