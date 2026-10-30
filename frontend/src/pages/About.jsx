@@ -50,7 +50,7 @@ const About = () => {
                 <p className="text-slate-700 leading-relaxed text-lg">
                   Run by the <strong className="text-slate-900">Mira Educational & Welfare Trust</strong>, H.N.P. Institute of Education was established with a
                   commitment to providing quality education in Motihari. We are an ISO 9001:2015 Certified Institution
-                  dedicated to nurturing young minds from Play Group to Class V.
+                  dedicated to nurturing young minds from Play Group to Class VIII (Play to 8).
                 </p>
               </div>
             </motion.div>

@@ -27,12 +27,29 @@ const Navbar = () => {
 
   return (
     <nav className="bg-blue-900 text-white shadow-lg sticky top-0 z-50">
+      {/* Top Banner Bar for UDISE and Registration No above the logos */}
+      <div className="bg-blue-950 text-amber-300 py-1 px-4 sm:px-6 lg:px-8 border-b border-blue-800/60 font-semibold tracking-wider">
+        <div className="max-w-7xl mx-auto flex justify-between items-center text-[10.5px] sm:text-xs">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-amber-400 font-extrabold uppercase">UDISE:</span>
+            <span className="text-white font-mono font-bold tracking-normal">10024104018</span>
+          </div>
+          <div className="flex items-center space-x-1.5">
+            <span className="text-amber-400 font-extrabold uppercase">REGISTRATION NO.:</span>
+            <span className="text-white font-mono font-bold tracking-normal">2041041202669153433</span>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Left Side Logo */}
           <div className="flex items-center space-x-2 sm:space-x-3">
             <img src="/hnp-logo.jpg" alt="HNP Institute" className="h-10 w-10 sm:h-12 sm:w-12 object-cover rounded-full border border-white/30 shadow-xs" />
-            <Link to="/" className="text-lg sm:text-xl lg:text-2xl font-bold tracking-wider">HNP Institute</Link>
+            <div className="flex flex-col">
+              <Link to="/" className="text-lg sm:text-xl lg:text-2xl font-bold tracking-wider leading-none">HNP Institute</Link>
+              <span className="text-[10px] text-amber-300 font-medium tracking-wide mt-0.5">Play to 8th | Motihari</span>
+            </div>
           </div>
           
           {/* Right Side Items */}
