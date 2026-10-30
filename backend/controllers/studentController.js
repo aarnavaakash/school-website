@@ -42,40 +42,87 @@ exports.getStudents = async (req, res) => {
 };
 
 exports.createStudent = async (req, res) => {
+  let createdUser = null;
   try {
-    const { name, class: studentClass, rollNumber, parentName, phone, email, address, dateOfBirth, admissionDate, photo } = req.body;
+    const { name, class: studentClass, rollNumber, parentName, phone, email, address, dateOfBirth, admissionDate, photo, admissionNo } = req.body;
     
-    // Check if user already exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: 'User with this email already exists' });
+    // Validate required fields
+    if (!name || (!studentClass && !req.body.class) || !rollNumber || !parentName || !phone || !email) {
+      return res.status(400).json({ message: 'Name, Class, Roll Number, Parent Name, Phone, and Email are required.' });
     }
 
-    // Create User for login (default password: student123)
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanRoll = String(rollNumber).trim();
+    const cleanClass = String(studentClass || req.body.class).trim();
+
+    // Check duplicate roll number
+    const existingRoll = await Student.findOne({ rollNumber: cleanRoll });
+    if (existingRoll) {
+      return res.status(400).json({ message: `A student with Roll Number "${cleanRoll}" already exists (${existingRoll.name}).` });
+    }
+
+    // Check duplicate student email
+    const existingStudentEmail = await Student.findOne({ email: cleanEmail });
+    if (existingStudentEmail) {
+      return res.status(400).json({ message: `A student with Email "${cleanEmail}" already exists (${existingStudentEmail.name}).` });
+    }
+
+    // Check existing User account
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      // If user exists but no student is linked (orphaned user record), safely clean it up
+      await User.deleteOne({ _id: existingUser._id });
+    }
+
+    // Create User for student portal login (default password: student123)
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash('student123', salt);
-    await User.create({
-      name,
-      email,
+    createdUser = await User.create({
+      name: String(name).trim(),
+      email: cleanEmail,
       password: hashedPassword,
       role: 'student'
     });
 
     // Create Student profile
     const studentData = {
-      name, class: studentClass, rollNumber, parentName, phone, email, address, dateOfBirth, admissionDate
+      name: String(name).trim(),
+      class: cleanClass,
+      rollNumber: cleanRoll,
+      parentName: String(parentName).trim(),
+      phone: String(phone).trim(),
+      email: cleanEmail,
+      address: address ? String(address).trim() : '',
+      admissionNo: admissionNo ? String(admissionNo).trim() : `HNP-${cleanRoll}`,
+      udiseNo: '10024104018',
+      registrationNo: '2041041202669153433'
     };
-    if (photo) {
-      studentData.photo = photo;
-    }
+
+    if (dateOfBirth) studentData.dateOfBirth = dateOfBirth;
+    if (admissionDate) studentData.admissionDate = admissionDate;
+
     if (req.file) {
       studentData.photo = req.file.path;
+    } else if (photo && typeof photo === 'string' && photo !== '[object Object]') {
+      studentData.photo = photo;
     }
+
     const student = await Student.create(studentData);
-    
-    res.status(201).json(student);
+    return res.status(201).json(student);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    // If student creation failed, rollback User creation so it doesn't leave orphan accounts
+    if (createdUser && createdUser._id) {
+      try {
+        await User.deleteOne({ _id: createdUser._id });
+      } catch (cleanupErr) {
+        console.error('Error rolling back user:', cleanupErr);
+      }
+    }
+    console.error('Create student error:', error);
+    return res.status(error.code === 11000 ? 400 : 500).json({ 
+      message: error.code === 11000 ? 'A student with this Roll Number or Email already exists.' : (error.message || 'Server error'),
+      error: error.message 
+    });
   }
 };
 
@@ -84,23 +131,65 @@ exports.updateStudent = async (req, res) => {
     const student = await Student.findById(req.params.id);
     if (!student) return res.status(404).json({ message: 'Student not found' });
     
-    if (req.body.email && req.body.email !== student.email) {
-      const userExists = await User.findOne({ email: req.body.email });
-      if (userExists) return res.status(400).json({ message: 'User with this email already exists' });
-      await User.findOneAndUpdate({ email: student.email }, { email: req.body.email, name: req.body.name });
-    } else if (req.body.name) {
-      await User.findOneAndUpdate({ email: student.email }, { name: req.body.name });
+    // Check email uniqueness if email is changed
+    if (req.body.email && req.body.email.trim().toLowerCase() !== student.email.toLowerCase()) {
+      const newEmail = req.body.email.trim().toLowerCase();
+      const existingStudent = await Student.findOne({ email: newEmail, _id: { $ne: req.params.id } });
+      if (existingStudent) {
+        return res.status(400).json({ message: `Another student already uses the email "${newEmail}".` });
+      }
+      await User.findOneAndUpdate({ email: student.email }, { email: newEmail, name: req.body.name ? req.body.name.trim() : student.name });
+    } else if (req.body.name && req.body.name.trim() !== student.name) {
+      await User.findOneAndUpdate({ email: student.email }, { name: req.body.name.trim() });
     }
 
-    // Check if this is a reportCard save
-    if (req.body.reportCard) {
-      let reportCardData = req.body.reportCard;
-      if (typeof reportCardData === 'string') {
+    // Check rollNumber uniqueness if rollNumber is changed
+    if (req.body.rollNumber && String(req.body.rollNumber).trim() !== String(student.rollNumber).trim()) {
+      const newRoll = String(req.body.rollNumber).trim();
+      const existingRoll = await Student.findOne({ rollNumber: newRoll, _id: { $ne: req.params.id } });
+      if (existingRoll) {
+        return res.status(400).json({ message: `Another student already uses Roll Number "${newRoll}".` });
+      }
+    }
+
+    // Build top-level updates
+    const updateFields = {
+      udiseNo: '10024104018',
+      registrationNo: '2041041202669153433'
+    };
+
+    if (req.body.name !== undefined) updateFields.name = String(req.body.name).trim();
+    if (req.body.class !== undefined) updateFields.class = String(req.body.class).trim();
+    if (req.body.rollNumber !== undefined) updateFields.rollNumber = String(req.body.rollNumber).trim();
+    if (req.body.parentName !== undefined) updateFields.parentName = String(req.body.parentName).trim();
+    if (req.body.phone !== undefined) updateFields.phone = String(req.body.phone).trim();
+    if (req.body.email !== undefined) updateFields.email = String(req.body.email).trim().toLowerCase();
+    if (req.body.address !== undefined) updateFields.address = String(req.body.address).trim();
+    if (req.body.dateOfBirth !== undefined) updateFields.dateOfBirth = req.body.dateOfBirth;
+    if (req.body.admissionDate !== undefined) updateFields.admissionDate = req.body.admissionDate;
+    if (req.body.admissionNo !== undefined) updateFields.admissionNo = String(req.body.admissionNo).trim();
+
+    if (req.file) {
+      updateFields.photo = req.file.path;
+    } else if (req.body.photo && typeof req.body.photo === 'string' && req.body.photo !== '[object Object]') {
+      updateFields.photo = req.body.photo;
+    }
+
+    // Handle Report Card if a valid reportCard object was sent
+    let reportCardData = req.body.reportCard;
+    if (typeof reportCardData === 'string') {
+      if (reportCardData === '[object Object]') {
+        reportCardData = null; // discard corrupted string
+      } else {
         try {
           reportCardData = JSON.parse(reportCardData);
-        } catch (e) {}
+        } catch (e) {
+          reportCardData = null;
+        }
       }
+    }
 
+    if (reportCardData && typeof reportCardData === 'object' && !Array.isArray(reportCardData) && (reportCardData.subjects || reportCardData.examType || reportCardData.examName)) {
       const examType = String(reportCardData.examType || reportCardData.examName || reportCardData.examTitle || 'Half Yearly Examination').trim();
       reportCardData.examType = examType;
       reportCardData.examName = examType;
@@ -176,27 +265,19 @@ exports.updateStudent = async (req, res) => {
         existingExamResults.push(newExamResult);
       }
 
-      const updatedStudent = await Student.findByIdAndUpdate(req.params.id, {
-        $set: {
-          reportCards: existingReportCards,
-          reportCard: reportCardData,
-          examResults: existingExamResults,
-          admissionNo: reportCardData.admissionNo || student.admissionNo || '',
-          udiseNo: '10024104018',
-          registrationNo: '2041041202669153433',
-          marks: marksArray.length > 0 ? marksArray : student.marks,
-          result: reportCardData.finalResult || student.result,
-          examName: examType
-        }
-      }, { new: true });
-
-      return res.json(updatedStudent);
+      updateFields.reportCards = existingReportCards;
+      updateFields.reportCard = reportCardData;
+      updateFields.examResults = existingExamResults;
+      if (marksArray.length > 0) updateFields.marks = marksArray;
+      updateFields.result = reportCardData.finalResult || student.result;
+      updateFields.examName = examType;
+      if (reportCardData.admissionNo) updateFields.admissionNo = reportCardData.admissionNo;
     }
 
-    // Check if this is a marks/exam save (has marks array and examName)
-    if (req.body.marks && req.body.examName) {
+    // Handle marks/exam save (if marks array and examName provided)
+    if (req.body.marks && Array.isArray(req.body.marks) && req.body.examName) {
       const examType = String(req.body.examName).trim();
-      const rawMarks = Array.isArray(req.body.marks) ? req.body.marks : [];
+      const rawMarks = req.body.marks;
       const marksArray = rawMarks
         .filter(m => m && m.subject && String(m.subject).trim() !== '')
         .map(m => ({
@@ -263,57 +344,57 @@ exports.updateStudent = async (req, res) => {
         existingReportCards.push(newRc);
       }
 
-      const updatedStudent = await Student.findByIdAndUpdate(req.params.id, {
-        $set: {
-          marks: marksArray,
-          result: resultStr,
-          examName: examType,
-          examResults: existingExamResults,
-          reportCards: existingReportCards,
-          reportCard: newRc
-        }
-      }, { new: true });
-
-      return res.json(updatedStudent);
+      updateFields.marks = marksArray;
+      updateFields.result = resultStr;
+      updateFields.examName = examType;
+      updateFields.examResults = existingExamResults;
+      updateFields.reportCards = existingReportCards;
+      updateFields.reportCard = newRc;
     }
 
-    // Regular profile update (no marks)
-    const updateData = { ...req.body };
-    if (req.file) {
-      updateData.photo = req.file.path;
-    }
-    const updatedStudent = await Student.findByIdAndUpdate(req.params.id, updateData, { new: true });
-    res.json(updatedStudent);
+    const updatedStudent = await Student.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    );
+
+    return res.json(updatedStudent);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Update student error:', error);
+    return res.status(error.code === 11000 ? 400 : 500).json({ 
+      message: error.code === 11000 ? 'Another student already uses this Roll Number or Email.' : (error.message || 'Server error'),
+      error: error.message 
+    });
   }
 };
 
 exports.deleteStudent = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
-    if (student) {
-      await User.findOneAndDelete({ email: student.email });
-      await Student.findByIdAndDelete(req.params.id);
-      res.json({ message: 'Student removed' });
-    } else {
-      res.status(404).json({ message: 'Student not found' });
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
     }
+    
+    // Delete linked User account
+    if (student.email) {
+      await User.deleteMany({ email: student.email.trim().toLowerCase() });
+    }
+    
+    await Student.findByIdAndDelete(req.params.id);
+    return res.json({ message: 'Student removed successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Delete student error:', error);
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
 exports.getStudentDashboard = async (req, res) => {
     try {
-        // Find the student record based on the user's email
-        // We assume User.email matches Student.email
-        const userEmail = req.user.email; // From authMiddleware if we set it, or fetch user first.
-        const User = require('../models/User');
         const user = await User.findById(req.user.id);
-        
-        const student = await Student.findOne({ email: user.email }).lean();
-        if(!student) return res.status(404).json({ message: "Student record not found" });
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const student = await Student.findOne({ email: user.email.toLowerCase() }).lean();
+        if (!student) return res.status(404).json({ message: "Student record not found" });
 
         // Calculate School Rank and Class Rank
         const allStudents = await Student.find().lean();
@@ -382,4 +463,4 @@ exports.getStudentDashboard = async (req, res) => {
     } catch(error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
-}
+};

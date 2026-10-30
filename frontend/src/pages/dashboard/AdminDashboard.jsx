@@ -64,9 +64,11 @@ const AdminDashboard = () => {
     setLoading(true);
     try {
       const response = await axios.get('/students');
-      setData(response.data);
+      setData(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching students:', error);
+      const errMsg = error.response?.data?.message || 'Failed to fetch students. Backend connection issue.';
+      setActionMessage(errMsg);
     } finally {
       setLoading(false);
     }
@@ -431,19 +433,66 @@ const AdminDashboard = () => {
   };
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this record?')) return;
     try {
       await axios.delete(`/${activeTab}/${id}`);
       if (editingId === id) cancelEdit();
+      setActionMessage('Deleted successfully');
+      setTimeout(() => setActionMessage(''), 3000);
       fetchData(activeTab);
     } catch (error) {
-      console.error(error);
+      console.error('Delete error:', error);
+      const errMsg = error.response?.data?.message || 'Failed to delete record';
+      alert(errMsg);
+      setActionMessage(errMsg);
     }
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
     try {
-      if ((activeTab === 'teachers' || activeTab === 'students') && newItem.photoFile) {
+      if (activeTab === 'students') {
+        const studentFields = ['name', 'class', 'rollNumber', 'parentName', 'phone', 'email', 'address', 'dateOfBirth', 'admissionDate', 'admissionNo'];
+        if (newItem.photoFile) {
+          const formData = new FormData();
+          studentFields.forEach(f => {
+            if (newItem[f] !== undefined && newItem[f] !== null) {
+              formData.append(f, newItem[f]);
+            }
+          });
+          formData.append('photo', newItem.photoFile);
+          if (isEditing) {
+            await axios.put(`/students/${editingId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+          } else {
+            await axios.post('/students', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+          }
+        } else {
+          const payload = {};
+          studentFields.forEach(f => {
+            if (newItem[f] !== undefined && newItem[f] !== null) {
+              payload[f] = newItem[f];
+            }
+          });
+          if (newItem.photo && typeof newItem.photo === 'string' && newItem.photo !== '[object Object]') {
+            payload.photo = newItem.photo;
+          }
+          if (isEditing) {
+            await axios.put(`/students/${editingId}`, payload);
+          } else {
+            await axios.post('/students', payload);
+          }
+        }
+        setActionMessage(isEditing ? 'Student updated successfully!' : 'Student added successfully!');
+        setTimeout(() => setActionMessage(''), 4000);
+        setNewItem({});
+        setIsEditing(false);
+        setEditingId(null);
+        setShowStudentForm(false);
+        fetchStudents();
+        return;
+      }
+
+      if (activeTab === 'teachers' && newItem.photoFile) {
         const formData = new FormData();
         Object.keys(newItem).forEach(key => {
           if (!['_id', 'createdAt', 'updatedAt', '__v'].includes(key)) {
@@ -487,13 +536,17 @@ const AdminDashboard = () => {
           await axios.post(`/${activeTab}`, newItem);
         }
       }
+      setActionMessage(isEditing ? 'Record updated successfully!' : 'Record added successfully!');
+      setTimeout(() => setActionMessage(''), 4000);
       setNewItem({});
       setIsEditing(false);
       setEditingId(null);
-      if (activeTab === 'students') setShowStudentForm(false);
       fetchData(activeTab);
     } catch (error) {
-      console.error(error);
+      console.error('Error saving item:', error);
+      const errMsg = error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to save record';
+      alert('Error: ' + errMsg);
+      setActionMessage('Error: ' + errMsg);
     }
   };
 
@@ -1069,7 +1122,20 @@ const AdminDashboard = () => {
                 ))}
                 {getFilteredData().length === 0 && (
                    <tr>
-                     <td colSpan="2" className="px-6 py-8 text-center text-gray-500">No data found</td>
+                     <td colSpan="2" className="px-6 py-8 text-center text-gray-500">
+                       <div className="flex flex-col items-center justify-center gap-2">
+                         <span>No data found{activeTab === 'students' && selectedClassFilter !== 'All' ? ` for ${selectedClassFilter}` : ''}.</span>
+                         {activeTab === 'students' && selectedClassFilter !== 'All' && (
+                           <button 
+                             type="button"
+                             onClick={() => setSelectedClassFilter('All')} 
+                             className="text-sm text-blue-600 hover:underline font-bold"
+                           >
+                             View All Students ({(Array.isArray(data) ? data : []).length})
+                           </button>
+                         )}
+                       </div>
+                     </td>
                    </tr>
                 )}
               </tbody>
