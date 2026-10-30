@@ -561,36 +561,40 @@ const ReportCard = ({
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
-          padding: 4px 10px 2px 10px;
-          margin-top: 2px;
+          padding: 6px 12px 4px 12px;
+          margin-top: 6px;
         }
         #${id} .sig-block {
           text-align: center;
-          width: 120px;
+          width: 145px;
         }
         #${id} .sig-line {
-          border-top: 1px solid #475569;
-          margin-bottom: 2px;
+          border-top: 1.5px solid #1e3a8a;
+          margin-bottom: 4px;
         }
         #${id} .sig-title {
-          font-size: 7.2pt;
+          font-size: 8pt;
           font-weight: bold;
           color: #1e3a8a;
+          line-height: 1.25;
         }
         #${id} .stamp-box {
-          width: 48px;
-          height: 48px;
+          width: 56px;
+          height: 56px;
           border: 1.5px dashed #d97706;
           border-radius: 50%;
           display: flex;
+          flex-direction: column;
           align-items: center;
           justify-content: center;
           text-align: center;
-          font-size: 5.5pt;
-          font-weight: bold;
+          font-size: 6.5pt;
+          font-weight: 800;
           color: #b45309;
           text-transform: uppercase;
           background: #fffdf5;
+          line-height: 1.2;
+          margin-bottom: 4px;
         }
         #${id} input.editable-input {
           width: 100%;
@@ -678,11 +682,11 @@ const ReportCard = ({
 
           <table className="student-info-grid">
             <colgroup>
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '27%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '24%' }} />
-              <col style={{ width: '13%' }} />
+              <col style={{ width: student.photo ? '18%' : '18%' }} />
+              <col style={{ width: student.photo ? '27%' : '32%' }} />
+              <col style={{ width: student.photo ? '18%' : '18%' }} />
+              <col style={{ width: student.photo ? '24%' : '32%' }} />
+              {student.photo && <col style={{ width: '13%' }} />}
             </colgroup>
             <tbody>
               <tr>
@@ -694,9 +698,9 @@ const ReportCard = ({
                 <td className="field-value font-semibold">
                   {student.class}
                 </td>
-                <td rowSpan={3} className="photo-cell">
-                  <div className="student-photo-frame">
-                    {student.photo ? (
+                {student.photo && (
+                  <td rowSpan={3} className="photo-cell">
+                    <div className="student-photo-frame">
                       <img
                         src={assetUrl(student.photo)}
                         alt={student.name || 'Student'}
@@ -704,31 +708,11 @@ const ReportCard = ({
                         className="student-photo-img"
                         onError={(e) => {
                           e.target.style.display = 'none';
-                          const fallback = e.target.parentElement?.querySelector('.photo-fallback');
-                          if (fallback) fallback.style.display = 'flex';
                         }}
                       />
-                    ) : null}
-                    <div
-                      className="photo-fallback"
-                      style={{
-                        display: student.photo ? 'none' : 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '3px',
-                        color: '#64748b',
-                        width: '100%',
-                        height: '100%'
-                      }}
-                    >
-                      <User style={{ width: '20px', height: '20px', color: '#94a3b8' }} />
-                      <span style={{ fontSize: '5.5pt', fontWeight: 'bold', textTransform: 'uppercase', marginTop: '2px', color: '#64748b', letterSpacing: '0.02em' }}>
-                        Affix Photo
-                      </span>
                     </div>
-                  </div>
-                </td>
+                  </td>
+                )}
               </tr>
               <tr>
                 <td className="field-label">Father's Name:</td>
@@ -994,27 +978,24 @@ const ReportCard = ({
           {/* Signatures */}
           <div className="signature-container">
             <div className="sig-block">
-              <div className="h-8"></div>
+              <div className="h-10"></div>
               <div className="sig-line"></div>
               <div className="sig-title">Class Teacher's Signature</div>
             </div>
             <div className="stamp-box">
-              School<br />Stamp / Seal
+              <span>SCHOOL</span>
+              <span>STAMP /</span>
+              <span>SEAL</span>
             </div>
             <div className="sig-block">
-              <div className="h-8"></div>
+              <div className="h-10"></div>
               <div className="sig-line"></div>
-              <div className="sig-title">Parent / Guardian Signature</div>
+              <div className="sig-title">
+                Parent / Guardian<br />Signature
+              </div>
             </div>
             <div className="sig-block">
-              <div className="h-8 flex items-end justify-center">
-                <img
-                  src="/folder/admit-card/sign-rohit.png?v=2"
-                  alt="Principal Signature"
-                  className="max-h-8 object-contain mix-blend-multiply"
-                  onError={(e) => { e.target.style.display = 'none'; }}
-                />
-              </div>
+              <div className="h-10"></div>
               <div className="sig-line"></div>
               <div className="sig-title">Principal's Signature</div>
             </div>
